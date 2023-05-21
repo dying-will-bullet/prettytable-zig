@@ -14,6 +14,8 @@ pub fn main() !void {
     const row2 = [_][]const u8{ "foo", "bar", "foo\nbar" };
 
     var table = Table.init(std.heap.page_allocator);
+    defer table.deinit();
+
     table.setFormat(FORMAT_BOX_CHARS);
     try table.addRow(&row1);
     try table.addRow(&row2);
