@@ -16,6 +16,8 @@ pub const Table = struct {
     format: TableFormat,
     titles: ?Row,
     rows: std.ArrayList(Row),
+    // TODO: this is not a good way
+    _data: std.ArrayList([]const u8),
 
     const Self = @This();
 
@@ -25,6 +27,7 @@ pub const Table = struct {
             .rows = std.ArrayList(Row).init(allocator),
             .titles = null,
             .format = FORMAT_DEFAULT,
+            ._data = std.ArrayList([]const u8).init(allocator),
         };
     }
 
@@ -37,6 +40,12 @@ pub const Table = struct {
         }
 
         self.rows.deinit();
+
+        for (self._data.items) |data| {
+            self.allocator.free(data);
+        }
+
+        self._data.deinit();
     }
 
     fn getColumnNum(self: Self) usize {
@@ -236,6 +245,25 @@ pub const Table = struct {
             i += 1;
         }
         return colWidth;
+    }
+
+    pub fn readFrom(self: *Self, reader: anytype, buf: []u8, sep: []const u8, has_title: bool) !void {
+        var flag = has_title;
+        while (try reader.readUntilDelimiterOrEof(buf, '\n')) |line| {
+            var i = self._data.items.len;
+            var it = std.mem.split(u8, line, sep);
+            while (it.next()) |data| {
+                var new_data = try self.allocator.alloc(u8, data.len);
+                @memcpy(new_data, data);
+                try self._data.append(new_data);
+            }
+            if (flag) {
+                try self.setTitle(self._data.items[i..]);
+                flag = false;
+            } else {
+                try self.addRow(self._data.items[i..]);
+            }
+        }
     }
 
     /// Print the table to standard output. Colors won't be displayed unless
@@ -617,5 +645,80 @@ test "test column alignment" {
         \\+-----+---------+-----+
         \\
     ;
+    try testing.expect(eql(u8, buf.items, expect));
+}
+
+test "test read from" {
+    var data =
+        \\quincy, 1, hot dogs
+        \\beau, 2, cereal
+        \\abbey, 3, pizza
+        \\mrugesh, 4, ice cream
+        \\
+    ;
+
+    var s = std.io.fixedBufferStream(data);
+    var reader = s.reader();
+
+    var table = Table.init(testing.allocator);
+    defer table.deinit();
+
+    var read_buf: [1024]u8 = undefined;
+    try table.readFrom(reader, &read_buf, ",", false);
+
+    var buf = std.ArrayList(u8).init(testing.allocator);
+    defer buf.deinit();
+    var out = buf.writer();
+
+    _ = try table.print(out);
+    const expect =
+        \\+---------+----+------------+
+        \\| quincy  |  1 |  hot dogs  |
+        \\+---------+----+------------+
+        \\| beau    |  2 |  cereal    |
+        \\+---------+----+------------+
+        \\| abbey   |  3 |  pizza     |
+        \\+---------+----+------------+
+        \\| mrugesh |  4 |  ice cream |
+        \\+---------+----+------------+
+        \\
+    ;
+
+    try testing.expect(eql(u8, buf.items, expect));
+}
+
+test "test read from with title" {
+    var data =
+        \\name, id, favorite food
+        \\beau, 2, cereal
+        \\abbey, 3, pizza
+        \\
+    ;
+
+    var s = std.io.fixedBufferStream(data);
+    var reader = s.reader();
+
+    var table = Table.init(testing.allocator);
+    defer table.deinit();
+
+    var read_buf: [1024]u8 = undefined;
+    try table.readFrom(reader, &read_buf, ",", true);
+
+    var buf = std.ArrayList(u8).init(testing.allocator);
+    defer buf.deinit();
+    var out = buf.writer();
+
+    _ = try table.print(out);
+    const expect =
+        \\+-------+-----+----------------+
+        \\| name  |  id |  favorite food |
+        \\+=======+=====+================+
+        \\| beau  |  2  |  cereal        |
+        \\+-------+-----+----------------+
+        \\| abbey |  3  |  pizza         |
+        \\+-------+-----+----------------+
+        \\
+    ;
+
     try testing.expect(eql(u8, buf.items, expect));
 }

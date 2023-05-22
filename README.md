@@ -99,6 +99,30 @@ Or you can change the alignment of a specific column.
 
 ```
 
+### Read from file/stream/...
+
+You can use the `readFrom` function to read data from `Reader` and construct a table.
+One scenario is to read data from a CSV file.
+
+```zig
+    var data =
+        \\name, id, favorite food
+        \\beau, 2, cereal
+        \\abbey, 3, pizza
+        \\
+    ;
+
+    var s = std.io.fixedBufferStream(data);
+    var reader = s.reader();
+    var table = Table.init(std.heap.page_allocator);
+    defer table.deinit();
+
+    var read_buf: [1024]u8 = undefined;
+    try table.readFrom(reader, &read_buf, ",", true);
+
+    table.printstd();
+```
+
 ### Get the table as string(bytes)
 
 ```zig
