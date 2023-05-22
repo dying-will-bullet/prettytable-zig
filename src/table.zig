@@ -68,14 +68,25 @@ pub const Table = struct {
         return self.rows.get(row);
     }
     /// Append a row in the table, transferring ownership of this row to the table
-    /// and returning a mutable reference to the row
-    pub fn addRow(self: *Self, cellData: []const []const u8) !void {
+    pub fn addRow(self: *Self, data: []const []const u8) !void {
         const row = try mkRow(
             self.allocator,
-            cellData,
+            data,
         );
 
         try self.rows.append(row);
+    }
+
+    /// Append a row in the table, transferring ownership of this row to the table
+    pub fn addRows(self: *Self, data: []const []const []const u8) !void {
+        for (data) |d| {
+            const row = try mkRow(
+                self.allocator,
+                d,
+            );
+
+            try self.rows.append(row);
+        }
     }
 
     /// Insert `row` at the position `index`, and return a mutable reference to this row.
@@ -264,16 +275,14 @@ test "test print table" {
 }
 
 test "test print mulitline table" {
-    const row1 = [_][]const u8{ "ABC", "DEFG", "HIJKLMN" };
-    const row2 = [_][]const u8{ "foobar", "foo", "bar" };
-    const row3 = [_][]const u8{ "1", "2", "3" };
-
     var table = Table.init(testing.allocator);
     defer table.deinit();
 
-    try table.addRow(&row1);
-    try table.addRow(&row2);
-    try table.addRow(&row3);
+    try table.addRows(&[_][]const []const u8{
+        &[_][]const u8{ "ABC", "DEFG", "HIJKLMN" },
+        &[_][]const u8{ "foobar", "foo", "bar" },
+        &[_][]const u8{ "1", "2", "3" },
+    });
 
     var buf = std.ArrayList(u8).init(testing.allocator);
     defer buf.deinit();
