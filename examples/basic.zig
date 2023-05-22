@@ -3,13 +3,25 @@ const Table = @import("prettytable").Table;
 const FORMAT_BOX_CHARS = @import("prettytable").FORMAT_BOX_CHARS;
 
 pub fn main() !void {
-    const row1 = [_][]const u8{ "Cell1", "cell2", "Cell3" };
-    const row2 = [_][]const u8{ "foo", "bar", "foo\nbar" };
-
+    // Create ad table
     var table = Table.init(std.heap.page_allocator);
-    table.setFormat(FORMAT_BOX_CHARS);
-    try table.addRow(&row1);
-    try table.addRow(&row2);
+    defer table.deinit();
+
+    // add some rows
+    try table.addRows(&[_][]const []const u8{
+        &[_][]const u8{ "A", "B", "C" },
+        &[_][]const u8{ "foo", "foo\nbar", "bar" },
+    });
+    // add single row
+    try table.addRow(&[_][]const u8{ "1", "2", "3" });
 
     table.printstd();
+    // +-----+-----+-----+
+    // | A   | B   | C   |
+    // +-----+-----+-----+
+    // | foo | foo | bar |
+    // |     | bar |     |
+    // +-----+-----+-----+
+    // | 1   | 2   | 3   |
+    // +-----+-----+-----+
 }

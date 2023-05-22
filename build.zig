@@ -1,8 +1,9 @@
 const std = @import("std");
-const Pkg = std.build.Pkg;
+const Module = std.build.Module;
 const Builder = std.build.Builder;
 const Mode = std.builtin.Mode;
 const CrossTarget = std.zig.CrossTarget;
+const FileSource = std.build.FileSource;
 
 // Although this function looks imperative, note that its job is to
 // declaratively construct a build graph that will be executed by an external
@@ -80,37 +81,34 @@ pub fn build(b: *std.Build) void {
     test_step.dependOn(&run_cell_tests.step);
     test_step.dependOn(&run_row_tests.step);
     test_step.dependOn(&run_table_tests.step);
+
+    buildExample(b, optimize, target, &.{ "basic", "format", "multiline" });
 }
 
-// // Although this function looks imperative, note that its job is to
-// // declaratively construct a build graph that will be executed by an external
-// // runner.
-// pub fn bin(b: *std.Build) void {
-//     // Standard target options allows the person running `zig build` to choose
-//     // what target to build for. Here we do not override the defaults, which
-//     // means any target is allowed, and the default is native. Other options
-//     // for restricting supported target set are available.
-//     const target = b.standardTargetOptions(.{});
+// Although this function looks imperative, note that its job is to
+// declaratively construct a build graph that will be executed by an external
+// runner.
+pub fn buildExample(b: *std.Build, optimize: Mode, target: CrossTarget, comptime source: []const []const u8) void {
+    inline for (source) |s| {
+        const exe = b.addExecutable(.{
+            .name = s,
+            // In this case the main source file is merely a path, however, in more
+            // complicated build scripts, this could be a generated file.
+            .root_source_file = .{ .path = "examples/" ++ s ++ ".zig" },
+            .target = target,
+            .optimize = optimize,
+        });
 
-//     // Standard optimization options allow the person running `zig build` to select
-//     // between Debug, ReleaseSafe, ReleaseFast, and ReleaseSmall. Here we do not
-//     // set a preferred release mode, allowing the user to decide how to optimize.
-//     const optimize = b.standardOptimizeOption(.{});
+        const pkg_prettytable = b.createModule(.{ .source_file = FileSource{ .path = "src/lib.zig" } });
 
-//     inline for (souce) |s| {
-//         const exe = b.addExecutable(.{
-//             .name = s,
-//             // In this case the main source file is merely a path, however, in more
-//             // complicated build scripts, this could be a generated file.
-//             .root_source_file = .{ .path = "example/" ++ s ++ ".zig" },
-//             .target = target,
-//             .optimize = optimize,
-//         });
-//         exe.addExecutable(selfPkg);
+        exe.addModule("prettytable", pkg_prettytable);
 
-//         // This declares intent for the executable to be installed into the
-//         // standard location when the user invokes the "install" step (the default
-//         // step when running `zig build`).
-//         b.installArtifact(exe);
-//     }
-// }
+        // This declares intent for the executable to be installed into the
+        // standard location when the user invokes the "install" step (the default
+        // step when running `zig build`).
+        b.installArtifact(exe);
+
+        // const ex = b.addRunArtifact(exe);
+        // example_step.dependOn(&ex.step);
+    }
+}
