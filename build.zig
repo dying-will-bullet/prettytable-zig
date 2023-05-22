@@ -82,7 +82,7 @@ pub fn build(b: *std.Build) void {
     test_step.dependOn(&run_row_tests.step);
     test_step.dependOn(&run_table_tests.step);
 
-    buildExample(b, optimize, target, &.{ "basic", "format", "multiline" });
+    buildExample(b, optimize, target, &.{ "basic", "format", "multiline", "align" });
 }
 
 // Although this function looks imperative, note that its job is to

@@ -82,6 +82,23 @@ Remove a row from the table.
     try table.setCell(0, 5, "100");
 ```
 
+### Alignment
+
+The table is aligned to the left by default. You can change the alignment of the entire table.
+
+```zig
+    // table.setAlign(Alignment.left);
+    // table.setAlign(Alignment.center);
+    table.setAlign(Alignment.right);
+```
+
+Or you can change the alignment of a specific column.
+
+```zig
+    table.setColumnAlign(1, Alignment.right);
+
+```
+
 ### Get the table as string(bytes)
 
 ```zig

@@ -3,8 +3,10 @@ const TableFormat = @import("./format.zig").TableFormat;
 const Row = @import("./row.zig").Row;
 const Cell = @import("./cell.zig").Cell;
 const mkRow = @import("./row.zig").row;
+const mkRowWithAlign = @import("./row.zig").rowWithAlign;
 const FORMAT_DEFAULT = @import("./format.zig").FORMAT_DEFAULT;
 const LinePosition = @import("./format.zig").LinePosition;
+const Alignment = @import("./format.zig").Alignment;
 const testing = std.testing;
 const eql = std.mem.eql;
 
@@ -169,6 +171,24 @@ pub const Table = struct {
     /// Change the table format. Eg : Separators
     pub fn setFormat(self: *Self, format: TableFormat) void {
         self.format = format;
+    }
+
+    pub fn setAlign(self: *Self, align_: Alignment) void {
+        for (self.rows.items) |row| {
+            for (0..row.len()) |idx| {
+                var cell = &row.cells.items[idx];
+                cell.setAlign(align_);
+            }
+        }
+    }
+
+    pub fn setColumnAlign(self: *Self, idx: usize, align_: Alignment) void {
+        for (self.rows.items) |row| {
+            if (row.len() > idx) {
+                var cell = &row.cells.items[idx];
+                cell.setAlign(align_);
+            }
+        }
     }
 
     pub fn getFormat(self: Self) TableFormat {
@@ -537,6 +557,64 @@ test "test get and set cell" {
         \\+--------+-----+-----+
         \\| 1      | 2   |     |
         \\+--------+-----+-----+
+        \\
+    ;
+    try testing.expect(eql(u8, buf.items, expect));
+}
+
+test "test table alignment" {
+    const row1 = [_][]const u8{ "foo", "foooooo", "bar" };
+    const row2 = [_][]const u8{ "1", "2", "3" };
+
+    var table = Table.init(testing.allocator);
+    defer table.deinit();
+
+    try table.addRow(&row1);
+    try table.addRow(&row2);
+
+    table.setAlign(Alignment.right);
+
+    var buf = std.ArrayList(u8).init(testing.allocator);
+    defer buf.deinit();
+    var out = buf.writer();
+
+    _ = try table.print(out);
+
+    const expect =
+        \\+-----+---------+-----+
+        \\| foo | foooooo | bar |
+        \\+-----+---------+-----+
+        \\|   1 |       2 |   3 |
+        \\+-----+---------+-----+
+        \\
+    ;
+    try testing.expect(eql(u8, buf.items, expect));
+}
+
+test "test column alignment" {
+    const row1 = [_][]const u8{ "foo", "foooooo", "bar" };
+    const row2 = [_][]const u8{ "1", "2", "3" };
+
+    var table = Table.init(testing.allocator);
+    defer table.deinit();
+
+    try table.addRow(&row1);
+    try table.addRow(&row2);
+
+    table.setColumnAlign(1, Alignment.right);
+
+    var buf = std.ArrayList(u8).init(testing.allocator);
+    defer buf.deinit();
+    var out = buf.writer();
+
+    _ = try table.print(out);
+
+    const expect =
+        \\+-----+---------+-----+
+        \\| foo | foooooo | bar |
+        \\+-----+---------+-----+
+        \\| 1   |       2 | 3   |
+        \\+-----+---------+-----+
         \\
     ;
     try testing.expect(eql(u8, buf.items, expect));

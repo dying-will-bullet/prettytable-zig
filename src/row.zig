@@ -2,6 +2,7 @@ const std = @import("std");
 const Cell = @import("./cell.zig").Cell;
 const TableFormat = @import("./format.zig").TableFormat;
 const ColumnPosition = @import("./format.zig").ColumnPosition;
+const Alignment = @import("./format.zig").Alignment;
 const testing = std.testing;
 const eql = std.mem.eql;
 
@@ -9,6 +10,15 @@ pub fn row(allocator: std.mem.Allocator, cells: []const []const u8) !Row {
     var list = std.ArrayList(Cell).init(allocator);
     for (cells) |cell| {
         try list.append(try Cell.init(allocator, cell));
+    }
+
+    return Row.init(allocator, list);
+}
+
+pub fn rowWithAlign(allocator: std.mem.Allocator, cells: []const []const u8, align_: Alignment) !Row {
+    var list = std.ArrayList(Cell).init(allocator);
+    for (cells) |cell| {
+        try list.append(try Cell.initWithAlign(allocator, cell, align_));
     }
 
     return Row.init(allocator, list);

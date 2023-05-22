@@ -1,6 +1,7 @@
 pub const Table = @import("./table.zig").Table;
 pub const Cell = @import("./cell.zig").Cell;
 pub const Row = @import("./row.zig").Row;
+pub const Alignment = @import("./format.zig").Alignment;
 
 // Some builtin format
 pub const FORMAT_DEFAULT = @import("./format.zig").FORMAT_DEFAULT;
