@@ -89,6 +89,34 @@ pub const Table = struct {
         }
     }
 
+    // pub fn addColumn(self: *Self, data: []const []const u8) !void {
+    //     var max_len = 0;
+    //     for (self.rows.items) |row| {
+    //         const l = row.len();
+    //         if (l > max_len) {
+    //             max_len = l;
+    //         }
+    //     }
+
+    //     var r = 0;
+    //     for (data) |d| {
+    //         if (r >= self.len()) {
+    //             var result = try self.allocator.alloc([]const u8, max_len);
+    //             std.mem.copy(u8, result[0..max_len-1], home_dir);
+    //             std.mem.copy(u8, result[max_len-1..], );
+
+    //             const row = try mkRow(
+    //                 self.allocator,
+    //                 data,
+    //             );
+    //         }
+
+    //         r += 1;
+    //     }
+
+    //     try self.rows.append(row);
+    // }
+
     /// Insert `row` at the position `index`, and return a mutable reference to this row.
     /// If index is higher than current numbers of rows, `row` is appended at the end of the table
     pub fn insertRow(self: *Self, index: usize, cellData: []const []const u8) !void {
