@@ -155,6 +155,38 @@ Output:
 +---------------------------------------------------------------------+
 ```
 
+### Change cell style
+
+It supports bold, italic, underline styles, and can also set colors.
+
+Color list:
+
+- `black`
+- `red`
+- `green`
+- `yellow`
+- `blue`
+- `magenta`
+- `cyan`
+- `white`
+
+If the above names are capitalized, such as `RED`, it indicates a bright color.
+
+```zig
+    try table.setCellStyle(0, 0, .{ .bold = true, .fg = .yellow });
+    try table.setCellStyle(0, 1, .{ .bold = true, .fg = .red });
+    try table.setCellStyle(0, 2, .{ .bold = true, .fg = .magenta });
+
+    try table.setCellStyle(1, 0, .{ .fg = .black, .bg = .cyan });
+    try table.setCellStyle(1, 1, .{ .fg = .black, .bg = .blue });
+    try table.setCellStyle(1, 2, .{ .fg = .black, .bg = .white });
+```
+
+Output:
+
+![2023-05-23_19-33](https://github.com/Hanaasagi/prettytable-zig/assets/9482395/72de3f62-7970-4e73-affd-8ee6d5347799)
+
+
 ## API
 
 TODO: Documentation generator

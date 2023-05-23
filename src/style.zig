@@ -27,12 +27,12 @@ pub const Style = struct {
     bold: bool = false,
     italic: bool = false,
     underline: bool = false,
-    f_color: ?Color = null,
-    b_color: ?Color = null,
+    fg: ?Color = null,
+    bg: ?Color = null,
 
     const Self = @This();
 
-    fn fg2Ansi(comptime color: Color) u8 {
+    fn fg2Ansi(color: Color) u8 {
         switch (color) {
             .black => {
                 return 30;
@@ -85,7 +85,7 @@ pub const Style = struct {
         }
     }
 
-    fn bg2Ansi(comptime color: Color) u8 {
+    fn bg2Ansi(color: Color) u8 {
         switch (color) {
             .black => {
                 return 40;
@@ -138,41 +138,52 @@ pub const Style = struct {
         }
     }
 
-    pub fn toAnsi(comptime self: Self) ![]const u8 {
-        var buffer = [_]u8{undefined} ** 32;
-        const template = "\x1b[{d};{d};{d};{d};{d}m";
+    pub fn toAnsi(self: Self, buf: []u8) !usize {
+        const template = "\x1b[{d};{d}{s}{s}{s}m";
 
-        comptime var f_color = 0;
-        comptime var b_color = 0;
-        comptime var bold = 0;
-        comptime var italic = 0;
-        comptime var underline = 0;
+        var fg: u8 = 39;
+        var bg: u8 = 49;
+        var bold: []const u8 = "";
+        var italic: []const u8 = "";
+        var underline: []const u8 = "";
 
-        if (self.f_color != null) {
-            f_color = comptime Self.fg2Ansi(self.f_color.?);
+        if (self.fg != null) {
+            fg = Self.fg2Ansi(self.fg.?);
         }
-        if (self.b_color != null) {
-            b_color = comptime Self.bg2Ansi(self.b_color.?);
+        if (self.bg != null) {
+            bg = Self.bg2Ansi(self.bg.?);
         }
 
         if (self.bold) {
-            bold = 1;
+            bold = ";1";
         }
         if (self.italic) {
-            italic = 3;
+            italic = ";3";
         }
 
         if (self.underline) {
-            underline = 4;
+            underline = ";4";
         }
 
-        // const prefix = comptime std.fmt.comptimePrint(template, .{ f_color, b_color, bold, italic, underline });
-        const prefix = try std.fmt.bufPrint(&buffer, template, .{ f_color, b_color, bold, italic, underline });
-        return prefix;
+        // const prefix = comptime std.fmt.comptimePrint(template, .{ fg, bg, bold, italic, underline });
+        const prefix = try std.fmt.bufPrint(buf, template, .{ fg, bg, bold, italic, underline });
+        return prefix.len;
     }
 };
 
 test "test to ansi" {
-    const style = .{ .bold = true, .f_color = .green, .b_color = .red };
-    try testing.expect(std.mem.eql(u8, try Style.toAnsi(style), "\x1b[32;41;1;0;0m"));
+    const style = .{ .bold = true, .fg = .green, .bg = .red };
+
+    var buf = try testing.allocator.alloc(u8, 32);
+    defer testing.allocator.free(buf);
+    const len = try Style.toAnsi(style, buf);
+    try testing.expect(std.mem.eql(u8, buf[0..len], "\x1b[32;41;1m"));
+}
+
+test "test default" {
+    const style = .{};
+    var buf = try testing.allocator.alloc(u8, 32);
+    defer testing.allocator.free(buf);
+    const len = try Style.toAnsi(style, buf);
+    try testing.expect(std.mem.eql(u8, buf[0..len], "\x1b[39;49m"));
 }

@@ -72,6 +72,13 @@ pub fn build(b: *std.Build) void {
     });
     const run_table_tests = b.addRunArtifact(table_tests);
 
+    const style_tests = b.addTest(.{
+        .root_source_file = .{ .path = "src/style.zig" },
+        .target = target,
+        .optimize = optimize,
+    });
+    const run_style_tests = b.addRunArtifact(style_tests);
+
     // This creates a build step. It will be visible in the `zig build --help` menu,
     // and can be selected like this: `zig build test`
     // This will evaluate the `test` step rather than the default, which is "install".
@@ -81,8 +88,9 @@ pub fn build(b: *std.Build) void {
     test_step.dependOn(&run_cell_tests.step);
     test_step.dependOn(&run_row_tests.step);
     test_step.dependOn(&run_table_tests.step);
+    test_step.dependOn(&run_style_tests.step);
 
-    buildExample(b, optimize, target, &.{ "basic", "format", "multiline", "align", "read" });
+    buildExample(b, optimize, target, &.{ "basic", "format", "multiline", "align", "read", "style" });
 }
 
 // Although this function looks imperative, note that its job is to

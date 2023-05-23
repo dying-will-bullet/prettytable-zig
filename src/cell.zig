@@ -2,6 +2,8 @@ const std = @import("std");
 const Alignment = @import("./format.zig").Alignment;
 const testing = std.testing;
 const eql = std.mem.eql;
+const Style = @import("./style.zig").Style;
+const Color = @import("./style.zig").Color;
 
 // TODO: @Hanaasagi, Unicode String
 const String = []const u8;
@@ -15,7 +17,7 @@ pub const Cell = struct {
     // content: []const String,
     width: usize,
     align_: Alignment,
-    // style: ArrayList(),
+    style: Style,
     hspan: usize,
 
     const Self = @This();
@@ -43,6 +45,7 @@ pub const Cell = struct {
             .width = width,
             .align_ = align_,
             .hspan = 1,
+            .style = .{},
         };
     }
 
@@ -57,6 +60,15 @@ pub const Cell = struct {
     /// Set text alignment in the cell
     pub fn setAlign(self: *Self, align_: Alignment) void {
         self.align_ = align_;
+    }
+
+    /// Remove all style attributes
+    pub fn resetStyle(self: *Self) void {
+        self.style = .{};
+    }
+    ///
+    pub fn setStyle(self: *Self, style: Style) void {
+        self.style = style;
     }
 
     /// Add horizontal spanning to the cell
@@ -94,17 +106,27 @@ pub const Cell = struct {
         return try std.mem.join(allocator, std.cstr.line_sep, self.content.items);
     }
 
-    /// Return a copy of the full string contained in the cell
-    // pub fn getContent(self: Self) String {
-    //     return self.content.join("\n");
-    // }
-
-    pub fn print(self: Self, out: anytype, idx: usize, colWidth: usize, skipRightFill: bool) void {
+    pub fn print(self: Self, allocator: std.mem.Allocator, out: anytype, idx: usize, colWidth: usize, skipRightFill: bool) void {
+        _ = allocator;
         var c: []const u8 = "";
         if (self.content.items.len > idx) {
             c = self.content.items[idx];
         }
         return self.printAlign(out, self.align_, c, " ", colWidth, skipRightFill) catch return;
+    }
+
+    pub fn printTerm(self: Self, allocator: std.mem.Allocator, out: anytype, idx: usize, colWidth: usize, skipRightFill: bool) void {
+        var buf = allocator.alloc(u8, 16) catch return;
+        defer allocator.free(buf);
+        const len = self.style.toAnsi(buf) catch return;
+        // std.debug.print("fuck {any} {d}\r\n", .{prefix, prefix.len});
+        // std.mem.copy(u8, d[0..prefix.len], prefix[0..prefix.len]);
+        // @memcpy(d, prefix);
+        // std.debug.print("Buck {any} {d}\r\n", .{d, d.len});
+        _ = out.write(buf[0..len]) catch return;
+        // _ = out.write("hello") catch return;
+        self.print(allocator, out, idx, colWidth, skipRightFill);
+        _ = out.write("\x1b[0m") catch return;
     }
 
     /// Align/fill a string and print it to `out`
@@ -173,7 +195,7 @@ test "test print ascii" {
     defer buf.deinit();
 
     var out = buf.writer();
-    _ = cell.print(out, 0, 10, false);
+    _ = cell.print(testing.allocator, out, 0, 10, false);
 
     try testing.expect(eql(u8, buf.items, "hello     "));
 }
@@ -187,7 +209,7 @@ test "test align left" {
     var buf = std.ArrayList(u8).init(testing.allocator);
     defer buf.deinit();
     var out = buf.writer();
-    _ = cell.print(out, 0, 10, false);
+    _ = cell.print(testing.allocator, out, 0, 10, false);
 
     try testing.expect(eql(u8, buf.items, "test      "));
 }
@@ -201,7 +223,7 @@ test "test align center" {
     var buf = std.ArrayList(u8).init(testing.allocator);
     defer buf.deinit();
     var out = buf.writer();
-    _ = cell.print(out, 0, 10, false);
+    _ = cell.print(testing.allocator, out, 0, 10, false);
 
     try testing.expect(eql(u8, buf.items, "   test   "));
 }
@@ -215,7 +237,7 @@ test "test align right" {
     var buf = std.ArrayList(u8).init(testing.allocator);
     defer buf.deinit();
     var out = buf.writer();
-    _ = cell.print(out, 0, 10, false);
+    _ = cell.print(testing.allocator, out, 0, 10, false);
 
     try testing.expect(eql(u8, buf.items, "      test"));
 }

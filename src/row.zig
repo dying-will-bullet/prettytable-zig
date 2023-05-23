@@ -3,6 +3,7 @@ const Cell = @import("./cell.zig").Cell;
 const TableFormat = @import("./format.zig").TableFormat;
 const ColumnPosition = @import("./format.zig").ColumnPosition;
 const Alignment = @import("./format.zig").Alignment;
+const Style = @import("./style.zig").Style;
 const testing = std.testing;
 const eql = std.mem.eql;
 
@@ -81,6 +82,14 @@ pub const Row = struct {
         self.cells.items[idx] = cell;
     }
 
+    pub fn setCellStyle(self: *Self, idx: usize, style: Style) !void {
+        if (idx >= self.len()) {
+            return error{IndexOutOfBounds}.IndexOutOfBounds;
+        }
+
+        self.cells.items[idx].setStyle(style);
+    }
+
     /// Append a `cell` at the end of the row
     pub fn addCell(self: *Self, cell: Cell) !void {
         try self.cells.append(cell);
@@ -156,7 +165,11 @@ pub const Row = struct {
         return self.internalPrint(out, format, colWidth, Cell.print) catch return 0;
     }
 
-    fn internalPrint(self: Self, out: anytype, format: TableFormat, colWidth: []const usize, f: fn (Cell, out: anytype, usize, usize, bool) void) !usize {
+    pub fn printTerm(self: Self, out: anytype, format: TableFormat, colWidth: []const usize) usize {
+        return self.internalPrint(out, format, colWidth, Cell.printTerm) catch return 0;
+    }
+
+    fn internalPrint(self: Self, out: anytype, format: TableFormat, colWidth: []const usize, f: fn (Cell, allocator: std.mem.Allocator, out: anytype, usize, usize, bool) void) !usize {
         var height = self.getHeight();
         for (0..height) |i| {
             for (0..format.getIndent()) |_| {
@@ -184,7 +197,7 @@ pub const Row = struct {
                 if (cell == null) {
                     const empty = try Cell.default(self.allocator);
                     defer empty.deinit();
-                    _ = f(empty, out, i, colWidth[j + hspan], skip_r_fill);
+                    _ = f(empty, self.allocator, out, i, colWidth[j + hspan], skip_r_fill);
                 } else {
 
                     // In case of horizontal spanning, width is the sum of all spanned columns' width
@@ -205,7 +218,7 @@ pub const Row = struct {
                     }
 
                     // Print cell content
-                    _ = f(cell.?, out, i, w, skip_r_fill);
+                    _ = f(cell.?, self.allocator, out, i, w, skip_r_fill);
                     hspan += real_span; // Add span to offset
                 }
                 var n: usize = 0;

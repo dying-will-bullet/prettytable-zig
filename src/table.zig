@@ -6,6 +6,7 @@ const mkRow = @import("./row.zig").row;
 const mkRowWithAlign = @import("./row.zig").rowWithAlign;
 const FORMAT_DEFAULT = @import("./format.zig").FORMAT_DEFAULT;
 const LinePosition = @import("./format.zig").LinePosition;
+const Style = @import("./style.zig").Style;
 const Alignment = @import("./format.zig").Alignment;
 const testing = std.testing;
 const eql = std.mem.eql;
@@ -151,6 +152,15 @@ pub const Table = struct {
         }
     }
 
+    pub fn setCellStyle(self: *Self, row: usize, column: usize, style: Style) !void {
+        if (row >= self.len()) {
+            return;
+        }
+
+        var row_ = self.rows.items[row];
+        try row_.setCellStyle(column, style);
+    }
+
     /// Modify a single element in the table
     pub fn setCell(self: *Self, row: usize, column: usize, data: []const u8) !void {
         if (row >= self.len()) {
@@ -277,10 +287,6 @@ pub const Table = struct {
 
     }
 
-    pub fn print(self: Self, out: anytype) !void {
-        _ = try self.internalPrint(out, Row.print);
-    }
-
     /// Print the table to standard output. Colors won't be displayed unless
     /// stdout is a tty terminal, or `force_colorize` is set to `true`.
     /// In ANSI terminals, colors are displayed using ANSI escape characters. When for example the
@@ -292,13 +298,25 @@ pub const Table = struct {
     pub fn print_tty(self: Self, force_colorize: bool) !void {
         // TODO: color
 
-        _ = force_colorize;
+        // _ = force_colorize;
         const stdout = std.io.getStdOut();
         var buf = std.io.bufferedWriter(stdout.writer());
         var w = buf.writer();
 
-        _ = try self.internalPrint(w, Row.print);
+        if (force_colorize) {
+            _ = try self.printTerm(w);
+        } else {
+            _ = try self.internalPrint(w, Row.print);
+        }
         try buf.flush();
+    }
+
+    pub fn print(self: Self, out: anytype) !void {
+        _ = try self.internalPrint(out, Row.print);
+    }
+
+    pub fn printTerm(self: Self, out: anytype) !void {
+        _ = try self.internalPrint(out, Row.printTerm);
     }
 
     // TODO: anytype
@@ -721,4 +739,21 @@ test "test read from with title" {
     ;
 
     try testing.expect(eql(u8, buf.items, expect));
+}
+
+test "test color" {
+    var table = Table.init(testing.allocator);
+    defer table.deinit();
+
+    try table.addRow(&[_][]const u8{"1"});
+    try table.setCellStyle(0, 0, .{ .bold = true, .fg = .red });
+
+    var buf = std.ArrayList(u8).init(testing.allocator);
+    defer buf.deinit();
+    var out = buf.writer();
+
+    _ = try table.printTerm(out);
+    const expect = [_]u8{ 43, 45, 45, 45, 43, 10, 124, 32, 27, 91, 51, 49, 59, 52, 57, 59, 49, 109, 49, 27, 91, 48, 109, 32, 124, 10, 43, 45, 45, 45, 43, 10 };
+
+    try testing.expect(eql(u8, buf.items, &expect));
 }
