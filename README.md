@@ -1,9 +1,41 @@
-# prettytable-zig
+<img align="left" width="200" height="200" src="https://github.com/Hanaasagi/prettytable-zig/assets/9482395/ae0f259c-08b4-437f-bb9c-281b70bf6271">
+
+<h1 align="center"> prettytable-zig </h1>
+
+> A formatted and aligned table printer library for Zig.
+This library is an implementation of [prettytable](https://github.com/jazzband/prettytable) in the Zig programming language.
 
 [![CI](https://github.com/Hanaasagi/prettytable-zig/actions/workflows/ci.yaml/badge.svg)](https://github.com/Hanaasagi/prettytable-zig/actions/workflows/ci.yaml)
+![](https://img.shields.io/badge/language-zig-%23ec915c)
+![](https://img.shields.io/badge/version-0.1.0--beta.0-%23f05b72)
 
-A formatted and aligned table printer library for Zig.
-This library is an implementation of [prettytable](https://github.com/jazzband/prettytable) in the Zig programming language.
+<br>
+
+**NOTE: Minimum Supported Zig Version -> 0.11**
+
+
+Table of Contents
+=================
+
+* [Features](#features)
+* [Getting Started](#getting-started)
+  * [Row Operations](#row-operations)
+  * [Modify cell data](#modify-cell-data)
+  * [Alignment](#alignment)
+  * [Read from file/stream/...](#read-from-filestream)
+  * [Get the table as string(bytes)](#get-the-table-as-stringbytes)
+  * [Change print format](#change-print-format)
+  * [Change cell style](#change-cell-style)
+* [API](#api)
+* [LICENSE](#license)
+
+
+## Features
+
+- Automatic alignment
+- Customizable border
+- Color and style 
+
 
 ## Getting Started
 
