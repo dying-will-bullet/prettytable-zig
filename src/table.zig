@@ -282,9 +282,8 @@ pub const Table = struct {
     /// To force colors rendering, use `print_tty()` method.
     /// Any failure to print is ignored. For better control, use `print_tty()`.
     /// Calling `printstd()` is equivalent to calling `print_tty(false)` and ignoring the result.
-    pub fn printstd(self: Self) void {
-        _ = self.print_tty(false) catch return; // Ignore result
-
+    pub fn printstd(self: Self) !void {
+        try self.print_tty(false);
     }
 
     /// Print the table to standard output. Colors won't be displayed unless

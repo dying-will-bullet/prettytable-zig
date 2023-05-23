@@ -14,43 +14,43 @@ pub fn main() !void {
 
     std.debug.print("\n\n{s}\n", .{"FORMAT_DEFAULT"});
     table.setFormat(pt.FORMAT_DEFAULT);
-    table.printstd();
+    try table.printstd();
 
     std.debug.print("\n\n{s}\n", .{"FORMAT_NO_TITLE"});
     table.setFormat(pt.FORMAT_NO_TITLE);
-    table.printstd();
+    try table.printstd();
 
     std.debug.print("\n\n{s}\n", .{"FORMAT_NO_LINESEP_WITH_TITLE"});
     table.setFormat(pt.FORMAT_NO_LINESEP_WITH_TITLE);
-    table.printstd();
+    try table.printstd();
 
     std.debug.print("\n\n{s}\n", .{"FORMAT_NO_LINESEP"});
     table.setFormat(pt.FORMAT_NO_LINESEP);
-    table.printstd();
+    try table.printstd();
 
     std.debug.print("\n\n{s}\n", .{"FORMAT_NO_COLSEP"});
     table.setFormat(pt.FORMAT_NO_COLSEP);
-    table.printstd();
+    try table.printstd();
 
     std.debug.print("\n\n{s}\n", .{"FORMAT_CLEAN"});
     table.setFormat(pt.FORMAT_CLEAN);
-    table.printstd();
+    try table.printstd();
 
     std.debug.print("\n\n{s}\n", .{"FORMAT_BORDERS_ONLY"});
     table.setFormat(pt.FORMAT_BORDERS_ONLY);
-    table.printstd();
+    try table.printstd();
 
     std.debug.print("\n\n{s}\n", .{"FORMAT_NO_BORDER"});
     table.setFormat(pt.FORMAT_NO_BORDER);
-    table.printstd();
+    try table.printstd();
 
     std.debug.print("\n\n{s}\n", .{"FORMAT_NO_BORDER_LINE_SEPARATOR"});
     table.setFormat(pt.FORMAT_NO_BORDER_LINE_SEPARATOR);
-    table.printstd();
+    try table.printstd();
 
     std.debug.print("\n\n{s}\n", .{"FORMAT_BOX_CHARS"});
     table.setFormat(pt.FORMAT_BOX_CHARS);
-    table.printstd();
+    try table.printstd();
 
     // FORMAT_DEFAULT
     // +------+------+--------+

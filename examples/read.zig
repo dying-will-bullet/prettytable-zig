@@ -18,7 +18,7 @@ pub fn main() !void {
     var read_buf: [1024]u8 = undefined;
     try table.readFrom(reader, &read_buf, ",", true);
 
-    table.printstd();
+    try table.printstd();
     // +-------+-----+----------------+
     // | name  |  id |  favorite food |
     // +=======+=====+================+

@@ -56,7 +56,7 @@ pub fn main() !void {
         &.{ "Abha", "SA", "42.5", "18.22", "14.03", "100" },
     });
 
-    table.printstd();
+    try table.printstd();
 }
 ```
 
@@ -148,7 +148,7 @@ One scenario is to read data from a CSV file.
     var read_buf: [1024]u8 = undefined;
     try table.readFrom(reader, &read_buf, ",", true);
 
-    table.printstd();
+    try table.printstd();
 ```
 
 ### Get the table as string(bytes)

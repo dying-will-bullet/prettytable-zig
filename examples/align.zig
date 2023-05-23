@@ -14,7 +14,7 @@ pub fn main() !void {
 
     table.setAlign(Alignment.right);
 
-    table.printstd();
+    try table.printstd();
     // +-----+---------+-----+
     // | foo | foooooo | bar |
     // +-----+---------+-----+

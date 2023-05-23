@@ -15,7 +15,7 @@ pub fn main() !void {
     // add single row
     try table.addRow(&[_][]const u8{ "1", "2", "3" });
 
-    table.printstd();
+    try table.printstd();
     // +-----+-----+-----+
     // | A   | B   | C   |
     // +-----+-----+-----+

@@ -24,7 +24,7 @@ pub fn main() !void {
         &[_][]const u8{ "This is\na multiline\ncell", "2", buf.items },
     });
 
-    table2.printstd();
+    try table2.printstd();
 
     // +-------------+---+------------------------+
     // | A           | B | C                      |
