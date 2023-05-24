@@ -1,4 +1,6 @@
-<img align="left" width="200" height="200" src="https://github.com/Hanaasagi/prettytable-zig/assets/9482395/ae0f259c-08b4-437f-bb9c-281b70bf6271">
+<!-- <img align="left" width="200" height="200" src="https://github.com/Hanaasagi/prettytable-zig/assets/9482395/ae0f259c-08b4-437f-bb9c-281b70bf6271"> -->
+
+<img align="left" width="200" height="200" src="https://github.com/Hanaasagi/prettytable-zig/assets/9482395/6e39d461-1c0e-4d86-ba57-885388952bd7">
 
 <h1 align="center"> prettytable-zig </h1>
 
