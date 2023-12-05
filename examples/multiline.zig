@@ -13,7 +13,7 @@ pub fn main() !void {
 
     var buf = std.ArrayList(u8).init(std.heap.page_allocator);
     defer buf.deinit();
-    var out = buf.writer();
+    const out = buf.writer();
     _ = try table1.print(out);
 
     var table2 = Table.init(std.heap.page_allocator);

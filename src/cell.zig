@@ -1,5 +1,6 @@
 const std = @import("std");
 const Alignment = @import("./format.zig").Alignment;
+const line_sep = @import("./utils.zig").line_sep;
 const testing = std.testing;
 const eql = std.mem.eql;
 const Style = @import("./style.zig").Style;
@@ -29,7 +30,7 @@ pub const Cell = struct {
     /// Create a new `Cell` initialized with content from `string`.
     /// Text alignment in cell is configurable with the `align` argument
     pub fn initWithAlign(allocator: std.mem.Allocator, string: String, align_: Alignment) !Self {
-        var it = std.mem.split(u8, string, std.cstr.line_sep);
+        var it = std.mem.split(u8, string, line_sep);
         var content = std.ArrayList(String).init(allocator);
         var width: usize = 0;
         while (it.next()) |item| {
@@ -103,7 +104,7 @@ pub const Cell = struct {
 
     /// Return a copy of the full string contained in the cell, caller owns the memory
     pub fn getContent(self: Self, allocator: std.mem.Allocator) ![]const u8 {
-        return try std.mem.join(allocator, std.cstr.line_sep, self.content.items);
+        return try std.mem.join(allocator, line_sep, self.content.items);
     }
 
     pub fn print(self: Self, allocator: std.mem.Allocator, out: anytype, idx: usize, colWidth: usize, skipRightFill: bool) void {
@@ -194,7 +195,7 @@ test "test print ascii" {
     var buf = std.ArrayList(u8).init(testing.allocator);
     defer buf.deinit();
 
-    var out = buf.writer();
+    const out = buf.writer();
     _ = cell.print(testing.allocator, out, 0, 10, false);
 
     try testing.expect(eql(u8, buf.items, "hello     "));
@@ -208,7 +209,7 @@ test "test align left" {
 
     var buf = std.ArrayList(u8).init(testing.allocator);
     defer buf.deinit();
-    var out = buf.writer();
+    const out = buf.writer();
     _ = cell.print(testing.allocator, out, 0, 10, false);
 
     try testing.expect(eql(u8, buf.items, "test      "));
@@ -222,7 +223,7 @@ test "test align center" {
 
     var buf = std.ArrayList(u8).init(testing.allocator);
     defer buf.deinit();
-    var out = buf.writer();
+    const out = buf.writer();
     _ = cell.print(testing.allocator, out, 0, 10, false);
 
     try testing.expect(eql(u8, buf.items, "   test   "));
@@ -236,7 +237,7 @@ test "test align right" {
 
     var buf = std.ArrayList(u8).init(testing.allocator);
     defer buf.deinit();
-    var out = buf.writer();
+    const out = buf.writer();
     _ = cell.print(testing.allocator, out, 0, 10, false);
 
     try testing.expect(eql(u8, buf.items, "      test"));

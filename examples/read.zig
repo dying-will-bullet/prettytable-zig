@@ -3,7 +3,7 @@ const Table = @import("prettytable").Table;
 const FORMAT_BOX_CHARS = @import("prettytable").FORMAT_BOX_CHARS;
 
 pub fn main() !void {
-    var data =
+    const data =
         \\name, id, favorite food
         \\beau, 2, cereal
         \\abbey, 3, pizza
@@ -11,7 +11,7 @@ pub fn main() !void {
     ;
 
     var s = std.io.fixedBufferStream(data);
-    var reader = s.reader();
+    const reader = s.reader();
     var table = Table.init(std.heap.page_allocator);
     defer table.deinit();
 

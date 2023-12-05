@@ -1,6 +1,7 @@
 const std = @import("std");
 const testing = std.testing;
 const unicode = @import("std").unicode;
+const line_sep = @import("./utils.zig").line_sep;
 
 // TODO: @Hanaasagi
 // unicode char, currenty is a bytes
@@ -88,7 +89,7 @@ pub const LineSeparator = struct {
         if (rborder) {
             _ = try out.write(self.rjunc);
         }
-        _ = try out.write(std.cstr.line_sep);
+        _ = try out.write(line_sep);
         return 1;
     }
 };

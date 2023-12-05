@@ -13,7 +13,7 @@
 
 <br>
 
-**NOTE: Minimum Supported Zig Version: 0.11. This project is under development，any suggestions or feedback are welcome.**
+**NOTE: Minimum Supported Zig Version: 0.12.0-dev.1773+8a8fd47d2. Any suggestions or feedback are welcome.**
 
 # Table of Contents
 

@@ -260,10 +260,10 @@ pub const Table = struct {
     pub fn readFrom(self: *Self, reader: anytype, buf: []u8, sep: []const u8, has_title: bool) !void {
         var flag = has_title;
         while (try reader.readUntilDelimiterOrEof(buf, '\n')) |line| {
-            var i = self._data.items.len;
+            const i = self._data.items.len;
             var it = std.mem.split(u8, line, sep);
             while (it.next()) |data| {
-                var new_data = try self.allocator.alloc(u8, data.len);
+                const new_data = try self.allocator.alloc(u8, data.len);
                 @memcpy(new_data, data);
                 try self._data.append(new_data);
             }
@@ -300,7 +300,7 @@ pub const Table = struct {
         // _ = force_colorize;
         const stdout = std.io.getStdOut();
         var buf = std.io.bufferedWriter(stdout.writer());
-        var w = buf.writer();
+        const w = buf.writer();
 
         if (force_colorize) {
             _ = try self.printTerm(w);
@@ -354,7 +354,7 @@ test "test print table" {
 
     var buf = std.ArrayList(u8).init(testing.allocator);
     defer buf.deinit();
-    var out = buf.writer();
+    const out = buf.writer();
 
     _ = try table.print(out);
 
@@ -379,7 +379,7 @@ test "test print mulitline table" {
 
     var buf = std.ArrayList(u8).init(testing.allocator);
     defer buf.deinit();
-    var out = buf.writer();
+    const out = buf.writer();
 
     _ = try table.print(out);
 
@@ -408,7 +408,7 @@ test "test print table with title" {
 
     var buf = std.ArrayList(u8).init(testing.allocator);
     defer buf.deinit();
-    var out = buf.writer();
+    const out = buf.writer();
 
     _ = try table.print(out);
 
@@ -434,7 +434,7 @@ test "test print table with format" {
 
     var buf = std.ArrayList(u8).init(testing.allocator);
     defer buf.deinit();
-    var out = buf.writer();
+    const out = buf.writer();
 
     _ = try table.print(out);
 
@@ -457,7 +457,7 @@ test "test print table with mulitline cell" {
 
     var buf = std.ArrayList(u8).init(testing.allocator);
     defer buf.deinit();
-    var out = buf.writer();
+    const out = buf.writer();
 
     _ = try table.print(out);
 
@@ -483,7 +483,7 @@ test "test print table with inconsistent columns" {
 
     var buf = std.ArrayList(u8).init(testing.allocator);
     defer buf.deinit();
-    var out = buf.writer();
+    const out = buf.writer();
 
     _ = try table.print(out);
 
@@ -561,7 +561,7 @@ test "test insert and remove row" {
 
     var buf = std.ArrayList(u8).init(testing.allocator);
     defer buf.deinit();
-    var out = buf.writer();
+    const out = buf.writer();
 
     _ = try table.print(out);
 
@@ -592,7 +592,7 @@ test "test get and set cell" {
 
     var buf = std.ArrayList(u8).init(testing.allocator);
     defer buf.deinit();
-    var out = buf.writer();
+    const out = buf.writer();
 
     _ = try table.print(out);
 
@@ -621,7 +621,7 @@ test "test table alignment" {
 
     var buf = std.ArrayList(u8).init(testing.allocator);
     defer buf.deinit();
-    var out = buf.writer();
+    const out = buf.writer();
 
     _ = try table.print(out);
 
@@ -650,7 +650,7 @@ test "test column alignment" {
 
     var buf = std.ArrayList(u8).init(testing.allocator);
     defer buf.deinit();
-    var out = buf.writer();
+    const out = buf.writer();
 
     _ = try table.print(out);
 
@@ -666,7 +666,7 @@ test "test column alignment" {
 }
 
 test "test read from" {
-    var data =
+    const data =
         \\quincy, 1, hot dogs
         \\beau, 2, cereal
         \\abbey, 3, pizza
@@ -675,7 +675,7 @@ test "test read from" {
     ;
 
     var s = std.io.fixedBufferStream(data);
-    var reader = s.reader();
+    const reader = s.reader();
 
     var table = Table.init(testing.allocator);
     defer table.deinit();
@@ -685,7 +685,7 @@ test "test read from" {
 
     var buf = std.ArrayList(u8).init(testing.allocator);
     defer buf.deinit();
-    var out = buf.writer();
+    const out = buf.writer();
 
     _ = try table.print(out);
     const expect =
@@ -705,7 +705,7 @@ test "test read from" {
 }
 
 test "test read from with title" {
-    var data =
+    const data =
         \\name, id, favorite food
         \\beau, 2, cereal
         \\abbey, 3, pizza
@@ -713,7 +713,7 @@ test "test read from with title" {
     ;
 
     var s = std.io.fixedBufferStream(data);
-    var reader = s.reader();
+    const reader = s.reader();
 
     var table = Table.init(testing.allocator);
     defer table.deinit();
@@ -723,7 +723,7 @@ test "test read from with title" {
 
     var buf = std.ArrayList(u8).init(testing.allocator);
     defer buf.deinit();
-    var out = buf.writer();
+    const out = buf.writer();
 
     _ = try table.print(out);
     const expect =
@@ -749,7 +749,7 @@ test "test color" {
 
     var buf = std.ArrayList(u8).init(testing.allocator);
     defer buf.deinit();
-    var out = buf.writer();
+    const out = buf.writer();
 
     _ = try table.printTerm(out);
     const expect = [_]u8{ 43, 45, 45, 45, 43, 10, 124, 32, 27, 91, 51, 49, 59, 52, 57, 59, 49, 109, 49, 27, 91, 48, 109, 32, 124, 10, 43, 45, 45, 45, 43, 10 };

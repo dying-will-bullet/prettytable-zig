@@ -4,6 +4,7 @@ const TableFormat = @import("./format.zig").TableFormat;
 const ColumnPosition = @import("./format.zig").ColumnPosition;
 const Alignment = @import("./format.zig").Alignment;
 const Style = @import("./style.zig").Style;
+const line_sep = @import("./utils.zig").line_sep;
 const testing = std.testing;
 const eql = std.mem.eql;
 
@@ -153,7 +154,7 @@ pub const Row = struct {
                     w = 0;
                 }
 
-                return @floatToInt(usize, std.math.ceil(@intToFloat(f64, w) / @intToFloat(f64, cell.getHspan())));
+                return @as(usize, @intFromFloat(std.math.ceil(@as(f64, @floatFromInt(w)) / @as(f64, @floatFromInt(cell.getHspan())))));
             }
 
             i += cell.getHspan();
@@ -170,7 +171,7 @@ pub const Row = struct {
     }
 
     fn internalPrint(self: Self, out: anytype, format: TableFormat, colWidth: []const usize, f: fn (Cell, allocator: std.mem.Allocator, out: anytype, usize, usize, bool) void) !usize {
-        var height = self.getHeight();
+        const height = self.getHeight();
         for (0..height) |i| {
             for (0..format.getIndent()) |_| {
                 _ = try out.write(" ");
@@ -203,7 +204,7 @@ pub const Row = struct {
                     // In case of horizontal spanning, width is the sum of all spanned columns' width
                     var w: usize = 0;
                     var start = j + hspan;
-                    var end = j + hspan + cell.?.getHspan();
+                    const end = j + hspan + cell.?.getHspan();
                     while (start < end) {
                         w += colWidth[start];
 
@@ -232,7 +233,7 @@ pub const Row = struct {
                 j += 1;
             }
             try format.printColumnSeparator(out, ColumnPosition.right);
-            _ = try out.writeAll(std.cstr.line_sep);
+            _ = try out.writeAll(line_sep);
         }
         return height;
     }
@@ -330,10 +331,10 @@ test "test print" {
     var buf = std.ArrayList(u8).init(testing.allocator);
     defer buf.deinit();
 
-    var out = buf.writer();
+    const out = buf.writer();
     _ = r.print(out, t.FORMAT_DEFAULT, &[_]usize{ 10, 10, 10 });
 
-    try testing.expect(eql(u8, buf.items, "| foo        | bar        | foobar     |" ++ std.cstr.line_sep));
+    try testing.expect(eql(u8, buf.items, "| foo        | bar        | foobar     |" ++ line_sep));
 }
 
 // test "test extend cell" {
