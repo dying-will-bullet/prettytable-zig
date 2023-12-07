@@ -218,7 +218,7 @@ Output:
 
 ## API
 
-TODO: Documentation generator
+[Online Docs](https://dying-will-bullet.github.io/prettytable-zig/)
 
 ## LICENSE
 
