@@ -1,9 +1,7 @@
 const std = @import("std");
-const Module = std.build.Module;
-const Builder = std.build.Builder;
+const Module = std.Build.Module;
 const Mode = std.builtin.Mode;
-const CrossTarget = std.zig.CrossTarget;
-const FileSource = std.build.FileSource;
+const ResolvedTarget = std.Build.ResolvedTarget;
 
 // Although this function looks imperative, note that its job is to
 // declaratively construct a build graph that will be executed by an external
@@ -19,6 +17,10 @@ pub fn build(b: *std.Build) void {
     // between Debug, ReleaseSafe, ReleaseFast, and ReleaseSmall. Here we do not
     // set a preferred release mode, allowing the user to decide how to optimize.
     const optimize = b.standardOptimizeOption(.{});
+
+    const module = b.addModule("prettytable", .{
+        .root_source_file = .{ .path = "src/lib.zig" },
+    });
 
     const lib = b.addStaticLibrary(.{
         .name = "prettytable-zig",
@@ -99,13 +101,13 @@ pub fn build(b: *std.Build) void {
     test_step.dependOn(&run_table_tests.step);
     test_step.dependOn(&run_style_tests.step);
 
-    buildExample(b, optimize, target, &.{ "basic", "format", "multiline", "align", "read", "style" });
+    buildExample(b, optimize, target, module, &.{ "basic", "format", "multiline", "align", "read", "style" });
 }
 
 // Although this function looks imperative, note that its job is to
 // declaratively construct a build graph that will be executed by an external
 // runner.
-pub fn buildExample(b: *std.Build, optimize: Mode, target: CrossTarget, comptime source: []const []const u8) void {
+pub fn buildExample(b: *std.Build, optimize: Mode, target: ResolvedTarget, module: *Module, comptime source: []const []const u8) void {
     inline for (source) |s| {
         const exe = b.addExecutable(.{
             .name = s,
@@ -116,9 +118,7 @@ pub fn buildExample(b: *std.Build, optimize: Mode, target: CrossTarget, comptime
             .optimize = optimize,
         });
 
-        const pkg_prettytable = b.createModule(.{ .source_file = FileSource{ .path = "src/lib.zig" } });
-
-        exe.addModule("prettytable", pkg_prettytable);
+        exe.root_module.addImport("prettytable", module);
 
         // This declares intent for the executable to be installed into the
         // standard location when the user invokes the "install" step (the default
