@@ -30,7 +30,7 @@ pub const Cell = struct {
     /// Create a new `Cell` initialized with content from `string`.
     /// Text alignment in cell is configurable with the `align` argument
     pub fn initWithAlign(allocator: std.mem.Allocator, string: String, align_: Alignment) !Self {
-        var it = std.mem.split(u8, string, line_sep);
+        var it = std.mem.splitSequence(u8, string, line_sep);
         var content = std.ArrayList(String).init(allocator);
         var width: usize = 0;
         while (it.next()) |item| {
