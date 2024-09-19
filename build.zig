@@ -19,14 +19,14 @@ pub fn build(b: *std.Build) void {
     const optimize = b.standardOptimizeOption(.{});
 
     const module = b.addModule("prettytable", .{
-        .root_source_file = .{ .path = "src/lib.zig" },
+        .root_source_file = b.path("src/lib.zig"),
     });
 
     const lib = b.addStaticLibrary(.{
         .name = "prettytable-zig",
         // In this case the main source file is merely a path, however, in more
         // complicated build scripts, this could be a generated file.
-        .root_source_file = .{ .path = "src/lib.zig" },
+        .root_source_file = b.path("src/lib.zig"),
         .target = target,
         .optimize = optimize,
     });
@@ -48,7 +48,7 @@ pub fn build(b: *std.Build) void {
     // Creates a step for unit testing. This only builds the test executable
     // but does not run it.
     const main_tests = b.addTest(.{
-        .root_source_file = .{ .path = "src/lib.zig" },
+        .root_source_file = b.path("src/lib.zig"),
         .target = target,
         .optimize = optimize,
     });
@@ -56,35 +56,35 @@ pub fn build(b: *std.Build) void {
     const run_main_tests = b.addRunArtifact(main_tests);
 
     const format_tests = b.addTest(.{
-        .root_source_file = .{ .path = "src/format.zig" },
+        .root_source_file = b.path("src/format.zig"),
         .target = target,
         .optimize = optimize,
     });
     const run_format_tests = b.addRunArtifact(format_tests);
 
     const cell_tests = b.addTest(.{
-        .root_source_file = .{ .path = "src/cell.zig" },
+        .root_source_file = b.path("src/cell.zig"),
         .target = target,
         .optimize = optimize,
     });
     const run_cell_tests = b.addRunArtifact(cell_tests);
 
     const row_tests = b.addTest(.{
-        .root_source_file = .{ .path = "src/row.zig" },
+        .root_source_file = b.path("src/row.zig"),
         .target = target,
         .optimize = optimize,
     });
     const run_row_tests = b.addRunArtifact(row_tests);
 
     const table_tests = b.addTest(.{
-        .root_source_file = .{ .path = "src/table.zig" },
+        .root_source_file = b.path("src/table.zig"),
         .target = target,
         .optimize = optimize,
     });
     const run_table_tests = b.addRunArtifact(table_tests);
 
     const style_tests = b.addTest(.{
-        .root_source_file = .{ .path = "src/style.zig" },
+        .root_source_file = b.path("src/style.zig"),
         .target = target,
         .optimize = optimize,
     });
@@ -113,7 +113,7 @@ pub fn buildExample(b: *std.Build, optimize: Mode, target: ResolvedTarget, modul
             .name = s,
             // In this case the main source file is merely a path, however, in more
             // complicated build scripts, this could be a generated file.
-            .root_source_file = .{ .path = "examples/" ++ s ++ ".zig" },
+            .root_source_file = b.path("examples/" ++ s ++ ".zig"),
             .target = target,
             .optimize = optimize,
         });

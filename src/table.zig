@@ -261,7 +261,7 @@ pub const Table = struct {
         var flag = has_title;
         while (try reader.readUntilDelimiterOrEof(buf, '\n')) |line| {
             const i = self._data.items.len;
-            var it = std.mem.split(u8, line, sep);
+            var it = std.mem.splitSequence(u8, line, sep);
             while (it.next()) |data| {
                 const new_data = try self.allocator.alloc(u8, data.len);
                 @memcpy(new_data, data);
