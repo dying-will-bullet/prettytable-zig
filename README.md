@@ -22,6 +22,7 @@
   - [Row Operations](#row-operations)
   - [Modify cell data](#modify-cell-data)
   - [Alignment](#alignment)
+  - [Unicode Support](#unicode-support)
   - [Read from file/stream/...](#read-from-filestream)
   - [Get the table as string(bytes)](#get-the-table-as-stringbytes)
   - [Change print format](#change-print-format)
@@ -34,6 +35,7 @@
 - Automatic alignment
 - Customizable border
 - Color and style
+- **Unicode width support** - Correct display width calculation for Unicode characters including Chinese, Japanese, Korean, and emoji
 
 ## Getting Started
 
@@ -128,6 +130,53 @@ Or you can change the alignment of a specific column.
     table.setColumnAlign(1, Alignment.right);
 
 ```
+
+### Unicode Support
+
+**prettytable-zig** now supports Unicode width calculation for proper alignment of international characters and emoji. The library automatically handles the display width of:
+
+- **Chinese characters**: 你好 (each character takes 2 display columns)
+- **Japanese characters**: こんにちは (hiragana, katakana, kanji)
+- **Korean characters**: 안녕하세요 (Hangul characters)
+- **Emoji**: 😊🍎🔥 (most emoji take 2 display columns)
+- **Mixed content**: combinations of ASCII and Unicode characters
+
+Example with Unicode characters:
+
+```zig
+const std = @import("std");
+const pt = @import("prettytable");
+
+pub fn main() !void {
+    var table = pt.Table.init(std.heap.page_allocator);
+    defer table.deinit();
+
+    try table.setTitle(&.{ "Name", "Greeting", "Mood" });
+    try table.addRow(&.{ "Alice", "Hello", "😊" });
+    try table.addRow(&.{ "张三", "你好", "😄" });
+    try table.addRow(&.{ "田中", "こんにちは", "🙂" });
+    try table.addRow(&.{ "김철수", "안녕하세요", "😃" });
+
+    try table.printstd();
+}
+```
+
+Output:
+```
++--------+------------+------+
+| Name   | Greeting   | Mood |
++========+============+======+
+| Alice  | Hello      | 😊   |
++--------+------------+------+
+| 张三   | 你好       | 😄   |
++--------+------------+------+
+| 田中   | こんにちは | 🙂   |
++--------+------------+------+
+| 김철수 | 안녕하세요 | 😃   |
++--------+------------+------+
+```
+
+The Unicode support is powered by the [zg library](https://codeberg.org/atman/zg) and is automatically enabled when you initialize a table.
 
 ### Read from file/stream/...
 

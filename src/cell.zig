@@ -1,6 +1,7 @@
 const std = @import("std");
 const Alignment = @import("./format.zig").Alignment;
 const line_sep = @import("./utils.zig").line_sep;
+const getStringWidth = @import("./utils.zig").getStringWidth;
 const testing = std.testing;
 const eql = std.mem.eql;
 const Style = @import("./style.zig").Style;
@@ -34,7 +35,7 @@ pub const Cell = struct {
         var content = std.ArrayList(String).init(allocator);
         var width: usize = 0;
         while (it.next()) |item| {
-            const l = item.len;
+            const l = getStringWidth(item);
             if (l > width) {
                 width = l;
             }
@@ -143,7 +144,7 @@ pub const Cell = struct {
         skipRightFill: bool,
     ) !void {
         _ = self;
-        const textLen = text.len;
+        const textLen = getStringWidth(text);
         var nfill: usize = 0;
         if (textLen < size) {
             nfill = size - textLen;
@@ -241,4 +242,58 @@ test "test align right" {
     _ = cell.print(testing.allocator, out, 0, 10, false);
 
     try testing.expect(eql(u8, buf.items, "      test"));
+}
+
+test "test cell with unicode characters" {
+    const allocator = testing.allocator;
+
+    // Initialize Unicode display width calculator
+    const initDisplayWidth = @import("./utils.zig").initDisplayWidth;
+    const deinitDisplayWidth = @import("./utils.zig").deinitDisplayWidth;
+
+    try initDisplayWidth(allocator);
+    defer deinitDisplayWidth(allocator);
+
+    // Test Chinese characters
+    const cell_chinese = try Cell.init(allocator, "你好");
+    defer cell_chinese.deinit();
+
+    try testing.expectEqual(@as(usize, 4), cell_chinese.getWidth());
+
+    // Test emoji
+    const cell_emoji = try Cell.init(allocator, "😊");
+    defer cell_emoji.deinit();
+
+    try testing.expectEqual(@as(usize, 2), cell_emoji.getWidth());
+
+    // Test mixed characters
+    const cell_mixed = try Cell.init(allocator, "Hello 😊");
+    defer cell_mixed.deinit();
+
+    try testing.expectEqual(@as(usize, 8), cell_mixed.getWidth());
+}
+
+test "test cell unicode alignment" {
+    const allocator = testing.allocator;
+
+    // Initialize Unicode display width calculator
+    const initDisplayWidth = @import("./utils.zig").initDisplayWidth;
+    const deinitDisplayWidth = @import("./utils.zig").deinitDisplayWidth;
+
+    try initDisplayWidth(allocator);
+    defer deinitDisplayWidth(allocator);
+
+    const cell = try Cell.initWithAlign(allocator, "你好", Alignment.center);
+    defer cell.deinit();
+
+    try testing.expectEqual(@as(usize, 4), cell.getWidth());
+
+    var buf = std.ArrayList(u8).init(allocator);
+    defer buf.deinit();
+    const out = buf.writer();
+    _ = cell.print(allocator, out, 0, 10, false);
+
+    // Chinese characters "你好" has display width 4, center aligned in width 10 space
+    // Left padding 3 spaces, right padding 3 spaces
+    try testing.expectEqualStrings("   你好   ", buf.items);
 }

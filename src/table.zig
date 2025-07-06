@@ -8,6 +8,8 @@ const FORMAT_DEFAULT = @import("./format.zig").FORMAT_DEFAULT;
 const LinePosition = @import("./format.zig").LinePosition;
 const Style = @import("./style.zig").Style;
 const Alignment = @import("./format.zig").Alignment;
+const initDisplayWidth = @import("./utils.zig").initDisplayWidth;
+const deinitDisplayWidth = @import("./utils.zig").deinitDisplayWidth;
 const testing = std.testing;
 const eql = std.mem.eql;
 
@@ -23,6 +25,9 @@ pub const Table = struct {
     const Self = @This();
 
     pub fn init(allocator: std.mem.Allocator) Self {
+        // Initialize Unicode display width calculator
+        initDisplayWidth(allocator) catch {};
+
         return Self{
             .allocator = allocator,
             .rows = std.ArrayList(Row).init(allocator),
@@ -47,6 +52,9 @@ pub const Table = struct {
         }
 
         self._data.deinit();
+
+        // Deinitialize Unicode display width calculator
+        deinitDisplayWidth(self.allocator);
     }
 
     fn getColumnNum(self: Self) usize {
@@ -755,4 +763,81 @@ test "test color" {
     const expect = [_]u8{ 43, 45, 45, 45, 43, 10, 124, 32, 27, 91, 51, 49, 59, 52, 57, 59, 49, 109, 49, 27, 91, 48, 109, 32, 124, 10, 43, 45, 45, 45, 43, 10 };
 
     try testing.expect(eql(u8, buf.items, &expect));
+}
+
+test "test table with unicode characters" {
+    const allocator = testing.allocator;
+
+    const row1 = [_][]const u8{ "姓名", "年龄", "职业" };
+    const row2 = [_][]const u8{ "张三", "25", "工程师" };
+    const row3 = [_][]const u8{ "李四", "30", "设计师" };
+
+    var table = Table.init(allocator);
+    defer table.deinit();
+
+    try table.setTitle(&row1);
+    try table.addRow(&row2);
+    try table.addRow(&row3);
+
+    var buf = std.ArrayList(u8).init(allocator);
+    defer buf.deinit();
+    const out = buf.writer();
+
+    _ = try table.print(out);
+
+    // Verify output contains correct Unicode characters
+    try testing.expect(std.mem.indexOf(u8, buf.items, "姓名") != null);
+    try testing.expect(std.mem.indexOf(u8, buf.items, "张三") != null);
+    try testing.expect(std.mem.indexOf(u8, buf.items, "工程师") != null);
+}
+
+test "test table with emoji" {
+    const allocator = testing.allocator;
+
+    const row1 = [_][]const u8{ "Name", "Mood", "Status" };
+    const row2 = [_][]const u8{ "Alice", "😊", "Happy" };
+    const row3 = [_][]const u8{ "Bob", "😢", "Sad" };
+
+    var table = Table.init(allocator);
+    defer table.deinit();
+
+    try table.setTitle(&row1);
+    try table.addRow(&row2);
+    try table.addRow(&row3);
+
+    var buf = std.ArrayList(u8).init(allocator);
+    defer buf.deinit();
+    const out = buf.writer();
+
+    _ = try table.print(out);
+
+    // Verify output contains correct emoji
+    try testing.expect(std.mem.indexOf(u8, buf.items, "😊") != null);
+    try testing.expect(std.mem.indexOf(u8, buf.items, "😢") != null);
+}
+
+test "test table mixed unicode and ascii" {
+    const allocator = testing.allocator;
+
+    const row1 = [_][]const u8{ "Product", "Price", "Review" };
+    const row2 = [_][]const u8{ "苹果", "$2.99", "很好 👍" };
+    const row3 = [_][]const u8{ "香蕉", "$1.99", "不错 😊" };
+
+    var table = Table.init(allocator);
+    defer table.deinit();
+
+    try table.setTitle(&row1);
+    try table.addRow(&row2);
+    try table.addRow(&row3);
+
+    var buf = std.ArrayList(u8).init(allocator);
+    defer buf.deinit();
+    const out = buf.writer();
+
+    _ = try table.print(out);
+
+    // Verify output contains mixed characters
+    try testing.expect(std.mem.indexOf(u8, buf.items, "苹果") != null);
+    try testing.expect(std.mem.indexOf(u8, buf.items, "👍") != null);
+    try testing.expect(std.mem.indexOf(u8, buf.items, "😊") != null);
 }
