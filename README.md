@@ -9,11 +9,11 @@
 
 [![CI](https://github.com/Hanaasagi/prettytable-zig/actions/workflows/ci.yaml/badge.svg)](https://github.com/Hanaasagi/prettytable-zig/actions/workflows/ci.yaml)
 ![](https://img.shields.io/badge/language-zig-%23ec915c)
-![](https://img.shields.io/badge/version-0.1.0--beta.0-%23f05b72)
+![](https://img.shields.io/badge/version-0.1.1)
 
 <br>
 
-**NOTE: Minimum Supported Zig Version: 0.12.0-dev.1773+8a8fd47d2. Any suggestions or feedback are welcome.**
+**NOTE: Minimum Supported Zig Version: zig 0.14.1. Any suggestions or feedback are welcome.**
 
 # Table of Contents
 

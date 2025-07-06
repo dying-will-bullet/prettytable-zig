@@ -172,7 +172,7 @@ pub const Style = struct {
 };
 
 test "test to ansi" {
-    const style = .{ .bold = true, .fg = .green, .bg = .red };
+    const style = Style{ .bold = true, .fg = .green, .bg = .red };
 
     var buf = try testing.allocator.alloc(u8, 32);
     defer testing.allocator.free(buf);
@@ -181,7 +181,7 @@ test "test to ansi" {
 }
 
 test "test default" {
-    const style = .{};
+    const style = Style{};
     var buf = try testing.allocator.alloc(u8, 32);
     defer testing.allocator.free(buf);
     const len = try Style.toAnsi(style, buf);
