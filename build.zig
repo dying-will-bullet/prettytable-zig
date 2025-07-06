@@ -18,9 +18,13 @@ pub fn build(b: *std.Build) void {
     // set a preferred release mode, allowing the user to decide how to optimize.
     const optimize = b.standardOptimizeOption(.{});
 
+    const zg = b.dependency("zg", .{});
+
     const module = b.addModule("prettytable", .{
         .root_source_file = b.path("src/lib.zig"),
     });
+
+    module.addImport("DisplayWidth", zg.module("DisplayWidth"));
 
     const lib = b.addStaticLibrary(.{
         .name = "prettytable-zig",
@@ -52,6 +56,7 @@ pub fn build(b: *std.Build) void {
         .target = target,
         .optimize = optimize,
     });
+    main_tests.root_module.addImport("DisplayWidth", zg.module("DisplayWidth"));
 
     const run_main_tests = b.addRunArtifact(main_tests);
 
@@ -60,6 +65,7 @@ pub fn build(b: *std.Build) void {
         .target = target,
         .optimize = optimize,
     });
+    format_tests.root_module.addImport("DisplayWidth", zg.module("DisplayWidth"));
     const run_format_tests = b.addRunArtifact(format_tests);
 
     const cell_tests = b.addTest(.{
@@ -67,6 +73,7 @@ pub fn build(b: *std.Build) void {
         .target = target,
         .optimize = optimize,
     });
+    cell_tests.root_module.addImport("DisplayWidth", zg.module("DisplayWidth"));
     const run_cell_tests = b.addRunArtifact(cell_tests);
 
     const row_tests = b.addTest(.{
@@ -74,6 +81,7 @@ pub fn build(b: *std.Build) void {
         .target = target,
         .optimize = optimize,
     });
+    row_tests.root_module.addImport("DisplayWidth", zg.module("DisplayWidth"));
     const run_row_tests = b.addRunArtifact(row_tests);
 
     const table_tests = b.addTest(.{
@@ -81,6 +89,7 @@ pub fn build(b: *std.Build) void {
         .target = target,
         .optimize = optimize,
     });
+    table_tests.root_module.addImport("DisplayWidth", zg.module("DisplayWidth"));
     const run_table_tests = b.addRunArtifact(table_tests);
 
     const style_tests = b.addTest(.{
@@ -88,6 +97,7 @@ pub fn build(b: *std.Build) void {
         .target = target,
         .optimize = optimize,
     });
+    style_tests.root_module.addImport("DisplayWidth", zg.module("DisplayWidth"));
     const run_style_tests = b.addRunArtifact(style_tests);
 
     // This creates a build step. It will be visible in the `zig build --help` menu,
@@ -101,13 +111,13 @@ pub fn build(b: *std.Build) void {
     test_step.dependOn(&run_table_tests.step);
     test_step.dependOn(&run_style_tests.step);
 
-    buildExample(b, optimize, target, module, &.{ "basic", "format", "multiline", "align", "read", "style" });
+    buildExample(b, optimize, target, module, zg, &.{ "basic", "format", "multiline", "align", "read", "style", "unicode" });
 }
 
 // Although this function looks imperative, note that its job is to
 // declaratively construct a build graph that will be executed by an external
 // runner.
-pub fn buildExample(b: *std.Build, optimize: Mode, target: ResolvedTarget, module: *Module, comptime source: []const []const u8) void {
+pub fn buildExample(b: *std.Build, optimize: Mode, target: ResolvedTarget, module: *Module, zg: *std.Build.Dependency, comptime source: []const []const u8) void {
     inline for (source) |s| {
         const exe = b.addExecutable(.{
             .name = s,
@@ -119,6 +129,7 @@ pub fn buildExample(b: *std.Build, optimize: Mode, target: ResolvedTarget, modul
         });
 
         exe.root_module.addImport("prettytable", module);
+        exe.root_module.addImport("DisplayWidth", zg.module("DisplayWidth"));
 
         // This declares intent for the executable to be installed into the
         // standard location when the user invokes the "install" step (the default
