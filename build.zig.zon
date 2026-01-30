@@ -8,7 +8,7 @@
     // This field is optional.
     // This is currently advisory only; Zig does not yet do anything
     // with this value.
-    .minimum_zig_version = "0.14.1",
+    .minimum_zig_version = "0.15.2",
 
     // This field is optional.
     // Each dependency must either provide a `url` and `hash`, or a `path`.
@@ -17,8 +17,8 @@
     // Internet connectivity.
     .dependencies = .{
         .zg = .{
-            .url = "git+https://codeberg.org/atman/zg.git#0b05141b033043c5f7bcd72048a48eef6531ea6c",
-            .hash = "zg-0.14.0-oGqU3KEFswIffnDu8eAE2XlhzwcfgjwtM6akIc5L7cEV",
+            .url = "https://codeberg.org/atman/zg/archive/v0.15.4.tar.gz",
+            .hash = "zg-0.15.3-oGqU3P5ItAJHmwDLfzX6sg6Xc5MhSJU2TctHfWu_sKLv",
         },
     },
     .paths = .{

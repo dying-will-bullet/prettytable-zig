@@ -9,18 +9,18 @@ const testing = std.testing;
 const eql = std.mem.eql;
 
 pub fn row(allocator: std.mem.Allocator, cells: []const []const u8) !Row {
-    var list = std.ArrayList(Cell).init(allocator);
+    var list: std.ArrayList(Cell) = .empty;
     for (cells) |cell| {
-        try list.append(try Cell.init(allocator, cell));
+        try list.append(allocator, try Cell.init(allocator, cell));
     }
 
     return Row.init(allocator, list);
 }
 
 pub fn rowWithAlign(allocator: std.mem.Allocator, cells: []const []const u8, align_: Alignment) !Row {
-    var list = std.ArrayList(Cell).init(allocator);
+    var list: std.ArrayList(Cell) = .empty;
     for (cells) |cell| {
-        try list.append(try Cell.initWithAlign(allocator, cell, align_));
+        try list.append(allocator, try Cell.initWithAlign(allocator, cell, align_));
     }
 
     return Row.init(allocator, list);
@@ -34,14 +34,14 @@ pub const Row = struct {
 
     /// Create a new `Row`
     pub fn init(allocator: std.mem.Allocator, cells: std.ArrayList(Cell)) Self {
-        return Self{ .allocator = allocator, .cells = cells };
+        return .{ .allocator = allocator, .cells = cells };
     }
 
-    pub fn deinit(self: Self) void {
-        for (self.cells.items) |cell| {
+    pub fn deinit(self: *Self) void {
+        for (self.cells.items) |*cell| {
             cell.deinit();
         }
-        self.cells.deinit();
+        self.cells.deinit(self.allocator);
     }
 
     /// Get the number of cells in this row
@@ -93,19 +93,19 @@ pub const Row = struct {
 
     /// Append a `cell` at the end of the row
     pub fn addCell(self: *Self, cell: Cell) !void {
-        try self.cells.append(cell);
+        try self.cells.append(self.allocator, cell);
     }
 
     /// Append a `cell` at the end of the row
     pub fn extendCells(self: *Self, cell: Cell) !void {
-        try self.cells.append(cell);
+        try self.cells.append(self.allocator, cell);
     }
 
     /// Insert `cell` at position `index`. If `index` is higher than the row length,
     /// the cell will be appended at the end
     pub fn insertCell(self: *Self, index: usize, cell: Cell) !void {
         if (index < self.len()) {
-            try self.cells.insert(index, cell);
+            try self.cells.insert(self.allocator, index, cell);
         } else {
             try self.addCell(cell);
         }
@@ -114,7 +114,7 @@ pub const Row = struct {
     /// Remove the cell at position `index`. Silently skip if this cell does not exist
     pub fn removeCell(self: *Self, index: usize) void {
         if (index < self.len()) {
-            const c = self.cells.orderedRemove(index);
+            var c = self.cells.orderedRemove(index);
             c.deinit();
         }
     }
@@ -196,7 +196,7 @@ pub const Row = struct {
                 const skip_r_fill = (j == colWidth.len - 1) and format.getColumnSeparator(ColumnPosition.right) == null;
                 const cell = self.getCell(j);
                 if (cell == null) {
-                    const empty = try Cell.default(self.allocator);
+                    var empty = try Cell.default(self.allocator);
                     defer empty.deinit();
                     _ = f(empty, self.allocator, out, i, colWidth[j + hspan], skip_r_fill);
                 } else {
@@ -328,10 +328,10 @@ test "test print" {
     var r = try row(testing.allocator, &data);
     defer r.deinit();
 
-    var buf = std.ArrayList(u8).init(testing.allocator);
-    defer buf.deinit();
+    var buf: std.ArrayList(u8) = .empty;
+    defer buf.deinit(testing.allocator);
 
-    const out = buf.writer();
+    const out = buf.writer(testing.allocator);
     _ = r.print(out, t.FORMAT_DEFAULT, &[_]usize{ 10, 10, 10 });
 
     try testing.expect(eql(u8, buf.items, "| foo        | bar        | foobar     |" ++ line_sep));

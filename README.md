@@ -13,7 +13,7 @@
 
 <br>
 
-**NOTE: Minimum Supported Zig Version: zig 0.14.1. Any suggestions or feedback are welcome.**
+**NOTE: Minimum Supported Zig Version: zig 0.15.2. Any suggestions or feedback are welcome.**
 
 # Table of Contents
 
@@ -205,10 +205,10 @@ One scenario is to read data from a CSV file.
 ### Get the table as string(bytes)
 
 ```zig
-    var buf = std.ArrayList(u8).init(std.heap.page_allocator);
-    defer buf.deinit();
+    var buf: std.ArrayList(u8) = .empty;
+    defer buf.deinit(std.heap.page_allocator);
 
-    var out = buf.writer();
+    var out = buf.writer(std.heap.page_allocator);
     _ = try table.print(out);
 
     // buf.items is the bytes of table
