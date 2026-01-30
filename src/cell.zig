@@ -21,6 +21,7 @@ pub const Cell = struct {
     align_: Alignment,
     style: Style,
     hspan: usize,
+    allocator: std.mem.Allocator,
 
     const Self = @This();
 
@@ -32,14 +33,14 @@ pub const Cell = struct {
     /// Text alignment in cell is configurable with the `align` argument
     pub fn initWithAlign(allocator: std.mem.Allocator, string: String, align_: Alignment) !Self {
         var it = std.mem.splitSequence(u8, string, line_sep);
-        var content = std.ArrayList(String).init(allocator);
+        var content: std.ArrayList(String) = .empty;
         var width: usize = 0;
         while (it.next()) |item| {
             const l = getStringWidth(item);
             if (l > width) {
                 width = l;
             }
-            try content.append(item);
+            try content.append(allocator, item);
         }
 
         return Self{
@@ -48,6 +49,7 @@ pub const Cell = struct {
             .align_ = align_,
             .hspan = 1,
             .style = .{},
+            .allocator = allocator,
         };
     }
 
@@ -55,8 +57,8 @@ pub const Cell = struct {
         return try Self.initWithAlign(allocator, string, Alignment.left);
     }
 
-    pub fn deinit(self: Self) void {
-        self.content.deinit();
+    pub fn deinit(self: *Self) void {
+        self.content.deinit(self.allocator);
     }
 
     /// Set text alignment in the cell
@@ -178,7 +180,7 @@ pub const Cell = struct {
 };
 
 test "test get_content" {
-    const cell = try Cell.init(testing.allocator, "test\nnewline");
+    var cell = try Cell.init(testing.allocator, "test\nnewline");
     defer cell.deinit();
 
     const content = try cell.getContent(testing.allocator);
@@ -188,58 +190,61 @@ test "test get_content" {
 }
 
 test "test print ascii" {
-    const cell = try Cell.init(testing.allocator, "hello");
+    const gpa = testing.allocator;
+    var cell = try Cell.init(gpa, "hello");
     defer cell.deinit();
 
     try testing.expect(cell.getWidth() == 5);
 
-    var buf = std.ArrayList(u8).init(testing.allocator);
-    defer buf.deinit();
+    var buf: std.ArrayList(u8) = .empty;
+    defer buf.deinit(gpa);
 
-    const out = buf.writer();
-    _ = cell.print(testing.allocator, out, 0, 10, false);
-
+    const out = buf.writer(gpa);
+    _ = cell.print(gpa, out, 0, 10, false);
     try testing.expect(eql(u8, buf.items, "hello     "));
 }
 
 test "test align left" {
-    const cell = try Cell.initWithAlign(testing.allocator, "test", Alignment.left);
+    const gpa = testing.allocator;
+    var cell = try Cell.initWithAlign(gpa, "test", Alignment.left);
     defer cell.deinit();
 
     try testing.expect(cell.getWidth() == 4);
 
-    var buf = std.ArrayList(u8).init(testing.allocator);
-    defer buf.deinit();
-    const out = buf.writer();
-    _ = cell.print(testing.allocator, out, 0, 10, false);
+    var buf: std.ArrayList(u8) = .empty;
+    defer buf.deinit(gpa);
+    const out = buf.writer(gpa);
+    _ = cell.print(gpa, out, 0, 10, false);
 
     try testing.expect(eql(u8, buf.items, "test      "));
 }
 
 test "test align center" {
-    const cell = try Cell.initWithAlign(testing.allocator, "test", Alignment.center);
+    const gpa = testing.allocator;
+    var cell = try Cell.initWithAlign(gpa, "test", Alignment.center);
     defer cell.deinit();
 
     try testing.expect(cell.getWidth() == 4);
 
-    var buf = std.ArrayList(u8).init(testing.allocator);
-    defer buf.deinit();
-    const out = buf.writer();
-    _ = cell.print(testing.allocator, out, 0, 10, false);
+    var buf: std.ArrayList(u8) = .empty;
+    defer buf.deinit(gpa);
+    const out = buf.writer(gpa);
+    _ = cell.print(gpa, out, 0, 10, false);
 
     try testing.expect(eql(u8, buf.items, "   test   "));
 }
 
 test "test align right" {
-    const cell = try Cell.initWithAlign(testing.allocator, "test", Alignment.right);
+    const gpa = testing.allocator;
+    var cell = try Cell.initWithAlign(gpa, "test", Alignment.right);
     defer cell.deinit();
 
     try testing.expect(cell.getWidth() == 4);
 
-    var buf = std.ArrayList(u8).init(testing.allocator);
-    defer buf.deinit();
-    const out = buf.writer();
-    _ = cell.print(testing.allocator, out, 0, 10, false);
+    var buf: std.ArrayList(u8) = .empty;
+    defer buf.deinit(gpa);
+    const out = buf.writer(gpa);
+    _ = cell.print(gpa, out, 0, 10, false);
 
     try testing.expect(eql(u8, buf.items, "      test"));
 }
@@ -255,19 +260,19 @@ test "test cell with unicode characters" {
     defer deinitDisplayWidth(allocator);
 
     // Test Chinese characters
-    const cell_chinese = try Cell.init(allocator, "你好");
+    var cell_chinese = try Cell.init(allocator, "你好");
     defer cell_chinese.deinit();
 
     try testing.expectEqual(@as(usize, 4), cell_chinese.getWidth());
 
     // Test emoji
-    const cell_emoji = try Cell.init(allocator, "😊");
+    var cell_emoji = try Cell.init(allocator, "😊");
     defer cell_emoji.deinit();
 
     try testing.expectEqual(@as(usize, 2), cell_emoji.getWidth());
 
     // Test mixed characters
-    const cell_mixed = try Cell.init(allocator, "Hello 😊");
+    var cell_mixed = try Cell.init(allocator, "Hello 😊");
     defer cell_mixed.deinit();
 
     try testing.expectEqual(@as(usize, 8), cell_mixed.getWidth());
@@ -283,14 +288,14 @@ test "test cell unicode alignment" {
     try initDisplayWidth(allocator);
     defer deinitDisplayWidth(allocator);
 
-    const cell = try Cell.initWithAlign(allocator, "你好", Alignment.center);
+    var cell = try Cell.initWithAlign(allocator, "你好", Alignment.center);
     defer cell.deinit();
 
     try testing.expectEqual(@as(usize, 4), cell.getWidth());
 
-    var buf = std.ArrayList(u8).init(allocator);
-    defer buf.deinit();
-    const out = buf.writer();
+    var buf: std.ArrayList(u8) = .empty;
+    defer buf.deinit(allocator);
+    const out = buf.writer(allocator);
     _ = cell.print(allocator, out, 0, 10, false);
 
     // Chinese characters "你好" has display width 4, center aligned in width 10 space

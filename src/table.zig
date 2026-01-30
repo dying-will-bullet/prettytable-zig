@@ -30,28 +30,28 @@ pub const Table = struct {
 
         return Self{
             .allocator = allocator,
-            .rows = std.ArrayList(Row).init(allocator),
+            .rows = .empty,
             .titles = null,
             .format = FORMAT_DEFAULT,
-            ._data = std.ArrayList([]const u8).init(allocator),
+            ._data = .empty,
         };
     }
 
-    pub fn deinit(self: Self) void {
+    pub fn deinit(self: *Self) void {
         if (self.titles != null) {
             self.titles.?.deinit();
         }
-        for (self.rows.items) |row| {
+        for (self.rows.items) |*row| {
             row.deinit();
         }
 
-        self.rows.deinit();
+        self.rows.deinit(self.allocator);
 
         for (self._data.items) |data| {
             self.allocator.free(data);
         }
 
-        self._data.deinit();
+        self._data.deinit(self.allocator);
 
         // Deinitialize Unicode display width calculator
         deinitDisplayWidth(self.allocator);
@@ -94,7 +94,7 @@ pub const Table = struct {
             data,
         );
 
-        try self.rows.append(row);
+        try self.rows.append(self.allocator, row);
     }
 
     /// Append a row in the table, transferring ownership of this row to the table
@@ -105,7 +105,7 @@ pub const Table = struct {
                 d,
             );
 
-            try self.rows.append(row);
+            try self.rows.append(self.allocator, row);
         }
     }
 
@@ -146,7 +146,7 @@ pub const Table = struct {
                 cellData,
             );
 
-            try self.rows.insert(index, row);
+            try self.rows.insert(self.allocator, index, row);
         } else {
             try self.addRow(cellData);
         }
@@ -155,7 +155,7 @@ pub const Table = struct {
     /// Remove the row at position `index`. Silently skip if the row does not exist
     pub fn removeRow(self: *Self, index: usize) void {
         if (index < self.len()) {
-            const row = self.rows.orderedRemove(index);
+            var row = self.rows.orderedRemove(index);
             defer row.deinit();
         }
     }
@@ -255,11 +255,11 @@ pub const Table = struct {
     /// Get the width of all columns, and return a slice
     /// with the result for each column
     fn getAllColumnWidth(self: Self, allocator: std.mem.Allocator) !std.ArrayList(usize) {
-        var colWidth = std.ArrayList(usize).init(allocator);
+        var colWidth: std.ArrayList(usize) = .empty;
         const colnum = self.getColumnNum();
         var i: usize = 0;
         while (i < colnum) {
-            try colWidth.append(self.getColumnWidth(i));
+            try colWidth.append(allocator, self.getColumnWidth(i));
             i += 1;
         }
         return colWidth;
@@ -273,7 +273,7 @@ pub const Table = struct {
             while (it.next()) |data| {
                 const new_data = try self.allocator.alloc(u8, data.len);
                 @memcpy(new_data, data);
-                try self._data.append(new_data);
+                try self._data.append(self.allocator, new_data);
             }
             if (flag) {
                 try self.setTitle(self._data.items[i..]);
@@ -306,16 +306,16 @@ pub const Table = struct {
         // TODO: color
 
         // _ = force_colorize;
-        const stdout = std.io.getStdOut();
-        var buf = std.io.bufferedWriter(stdout.writer());
-        const w = buf.writer();
+        var stdout_buffer: [1024]u8 = undefined;
+        var stdout_writer = std.fs.File.stdout().writer(&stdout_buffer);
+        const stdout = &stdout_writer.interface;
 
         if (force_colorize) {
-            _ = try self.printTerm(w);
+            _ = try self.printTerm(stdout);
         } else {
-            _ = try self.internalPrint(w, Row.print);
+            _ = try self.internalPrint(stdout, Row.print);
         }
-        try buf.flush();
+        try stdout.flush();
     }
 
     pub fn print(self: Self, out: anytype) !void {
@@ -329,8 +329,8 @@ pub const Table = struct {
     // TODO: anytype
     fn internalPrint(self: Self, out: anytype, f: fn (Row, anytype, TableFormat, []const usize) usize) !usize {
         var height: usize = 0;
-        const colWidth = try self.getAllColumnWidth(self.allocator);
-        defer colWidth.deinit();
+        var colWidth = try self.getAllColumnWidth(self.allocator);
+        defer colWidth.deinit(self.allocator);
 
         height += try self.format.printLineSeparator(out, colWidth.items, LinePosition.top);
         if (self.titles != null) {
@@ -353,16 +353,16 @@ pub const Table = struct {
 };
 
 test "test print table" {
+    const gpa = testing.allocator;
     const row1 = [_][]const u8{ "ABC", "DEFG", "HIJKLMN" };
 
-    var table = Table.init(testing.allocator);
+    var table = Table.init(gpa);
     defer table.deinit();
-
     try table.addRow(&row1);
 
-    var buf = std.ArrayList(u8).init(testing.allocator);
-    defer buf.deinit();
-    const out = buf.writer();
+    var buf: std.ArrayList(u8) = .empty;
+    defer buf.deinit(gpa);
+    const out = buf.writer(gpa);
 
     _ = try table.print(out);
 
@@ -376,7 +376,8 @@ test "test print table" {
 }
 
 test "test print mulitline table" {
-    var table = Table.init(testing.allocator);
+    const gpa = testing.allocator;
+    var table = Table.init(gpa);
     defer table.deinit();
 
     try table.addRows(&[_][]const []const u8{
@@ -385,9 +386,9 @@ test "test print mulitline table" {
         &[_][]const u8{ "1", "2", "3" },
     });
 
-    var buf = std.ArrayList(u8).init(testing.allocator);
-    defer buf.deinit();
-    const out = buf.writer();
+    var buf: std.ArrayList(u8) = .empty;
+    defer buf.deinit(gpa);
+    const out = buf.writer(gpa);
 
     _ = try table.print(out);
 
@@ -405,18 +406,19 @@ test "test print mulitline table" {
 }
 
 test "test print table with title" {
+    const gpa = testing.allocator;
     const title = [_][]const u8{ "col1", "col2", "col3" };
     const row1 = [_][]const u8{ "foobar", "foo", "bar" };
 
-    var table = Table.init(testing.allocator);
+    var table = Table.init(gpa);
     defer table.deinit();
 
     try table.addRow(&row1);
     try table.setTitle(&title);
 
-    var buf = std.ArrayList(u8).init(testing.allocator);
-    defer buf.deinit();
-    const out = buf.writer();
+    var buf: std.ArrayList(u8) = .empty;
+    defer buf.deinit(gpa);
+    const out = buf.writer(gpa);
 
     _ = try table.print(out);
 
@@ -432,17 +434,17 @@ test "test print table with title" {
 }
 
 test "test print table with format" {
+    const gpa = testing.allocator;
     const row1 = [_][]const u8{ "foobar", "foo", "bar" };
 
-    var table = Table.init(testing.allocator);
+    var table = Table.init(gpa);
     defer table.deinit();
-
     try table.addRow(&row1);
     table.setFormat(@import("./format.zig").FORMAT_BOX_CHARS);
 
-    var buf = std.ArrayList(u8).init(testing.allocator);
-    defer buf.deinit();
-    const out = buf.writer();
+    var buf: std.ArrayList(u8) = .empty;
+    defer buf.deinit(gpa);
+    const out = buf.writer(gpa);
 
     _ = try table.print(out);
 
@@ -456,16 +458,17 @@ test "test print table with format" {
 }
 
 test "test print table with mulitline cell" {
+    const gpa = testing.allocator;
     const row1 = [_][]const u8{ "foo\nbar", "foo", "bar" };
 
-    var table = Table.init(testing.allocator);
+    var table = Table.init(gpa);
     defer table.deinit();
 
     try table.addRow(&row1);
 
-    var buf = std.ArrayList(u8).init(testing.allocator);
-    defer buf.deinit();
-    const out = buf.writer();
+    var buf: std.ArrayList(u8) = .empty;
+    defer buf.deinit(gpa);
+    const out = buf.writer(gpa);
 
     _ = try table.print(out);
 
@@ -480,18 +483,19 @@ test "test print table with mulitline cell" {
 }
 
 test "test print table with inconsistent columns" {
+    const gpa = testing.allocator;
     const row1 = [_][]const u8{ "foobar", "foo", "bar" };
     const row2 = [_][]const u8{ "1", "2" };
 
-    var table = Table.init(testing.allocator);
+    var table = Table.init(gpa);
     defer table.deinit();
 
     try table.addRow(&row1);
     try table.addRow(&row2);
 
-    var buf = std.ArrayList(u8).init(testing.allocator);
-    defer buf.deinit();
-    const out = buf.writer();
+    var buf: std.ArrayList(u8) = .empty;
+    defer buf.deinit(gpa);
+    const out = buf.writer(gpa);
 
     _ = try table.print(out);
 
@@ -507,6 +511,7 @@ test "test print table with inconsistent columns" {
 }
 
 test "test nest table" {
+    const gpa = testing.allocator;
     // Nest Table
     const row1 = [_][]const u8{ "foobar", "foo", "bar" };
     const row2 = [_][]const u8{ "1", "2" };
@@ -517,9 +522,10 @@ test "test nest table" {
     try table1.addRow(&row1);
     try table1.addRow(&row2);
 
-    var buf = std.ArrayList(u8).init(testing.allocator);
-    defer buf.deinit();
-    var out = buf.writer();
+    var buf: std.ArrayList(u8) = .empty;
+    defer buf.deinit(gpa);
+    var out = buf.writer(gpa);
+
     _ = try table1.print(out);
 
     // Table 2
@@ -532,9 +538,9 @@ test "test nest table" {
     try table2.addRow(&row3);
     try table2.addRow(&row4);
 
-    var buf2 = std.ArrayList(u8).init(testing.allocator);
-    defer buf2.deinit();
-    out = buf2.writer();
+    var buf2: std.ArrayList(u8) = .empty;
+    defer buf2.deinit(gpa);
+    out = buf2.writer(gpa);
 
     _ = try table2.print(out);
 
@@ -555,11 +561,12 @@ test "test nest table" {
 }
 
 test "test insert and remove row" {
+    const gpa = testing.allocator;
     const row1 = [_][]const u8{ "foobar", "foo", "bar" };
     const row2 = [_][]const u8{ "1", "2" };
     const row3 = [_][]const u8{ "ABC", "DEFG", "HIJKLMN" };
 
-    var table = Table.init(testing.allocator);
+    var table = Table.init(gpa);
     defer table.deinit();
 
     try table.addRow(&row1);
@@ -567,9 +574,9 @@ test "test insert and remove row" {
     try table.insertRow(0, &row3);
     table.removeRow(1);
 
-    var buf = std.ArrayList(u8).init(testing.allocator);
-    defer buf.deinit();
-    const out = buf.writer();
+    var buf: std.ArrayList(u8) = .empty;
+    defer buf.deinit(gpa);
+    const out = buf.writer(gpa);
 
     _ = try table.print(out);
 
@@ -585,10 +592,11 @@ test "test insert and remove row" {
 }
 
 test "test get and set cell" {
+    const gpa = testing.allocator;
     const row1 = [_][]const u8{ "foobar", "foo", "bar" };
     const row2 = [_][]const u8{ "1", "2" };
 
-    var table = Table.init(testing.allocator);
+    var table = Table.init(gpa);
     defer table.deinit();
 
     try table.addRow(&row1);
@@ -598,9 +606,9 @@ test "test get and set cell" {
 
     try table.setCell(0, 0, "FOOBAR");
 
-    var buf = std.ArrayList(u8).init(testing.allocator);
-    defer buf.deinit();
-    const out = buf.writer();
+    var buf: std.ArrayList(u8) = .empty;
+    defer buf.deinit(gpa);
+    const out = buf.writer(gpa);
 
     _ = try table.print(out);
 
@@ -616,10 +624,11 @@ test "test get and set cell" {
 }
 
 test "test table alignment" {
+    const gpa = testing.allocator;
     const row1 = [_][]const u8{ "foo", "foooooo", "bar" };
     const row2 = [_][]const u8{ "1", "2", "3" };
 
-    var table = Table.init(testing.allocator);
+    var table = Table.init(gpa);
     defer table.deinit();
 
     try table.addRow(&row1);
@@ -627,9 +636,9 @@ test "test table alignment" {
 
     table.setAlign(Alignment.right);
 
-    var buf = std.ArrayList(u8).init(testing.allocator);
-    defer buf.deinit();
-    const out = buf.writer();
+    var buf: std.ArrayList(u8) = .empty;
+    defer buf.deinit(gpa);
+    const out = buf.writer(gpa);
 
     _ = try table.print(out);
 
@@ -645,10 +654,11 @@ test "test table alignment" {
 }
 
 test "test column alignment" {
+    const gpa = testing.allocator;
     const row1 = [_][]const u8{ "foo", "foooooo", "bar" };
     const row2 = [_][]const u8{ "1", "2", "3" };
 
-    var table = Table.init(testing.allocator);
+    var table = Table.init(gpa);
     defer table.deinit();
 
     try table.addRow(&row1);
@@ -656,9 +666,9 @@ test "test column alignment" {
 
     table.setColumnAlign(1, Alignment.right);
 
-    var buf = std.ArrayList(u8).init(testing.allocator);
-    defer buf.deinit();
-    const out = buf.writer();
+    var buf: std.ArrayList(u8) = .empty;
+    defer buf.deinit(gpa);
+    const out = buf.writer(gpa);
 
     _ = try table.print(out);
 
@@ -674,6 +684,7 @@ test "test column alignment" {
 }
 
 test "test read from" {
+    const gpa = testing.allocator;
     const data =
         \\quincy, 1, hot dogs
         \\beau, 2, cereal
@@ -685,15 +696,15 @@ test "test read from" {
     var s = std.io.fixedBufferStream(data);
     const reader = s.reader();
 
-    var table = Table.init(testing.allocator);
+    var table = Table.init(gpa);
     defer table.deinit();
 
     var read_buf: [1024]u8 = undefined;
     try table.readFrom(reader, &read_buf, ",", false);
 
-    var buf = std.ArrayList(u8).init(testing.allocator);
-    defer buf.deinit();
-    const out = buf.writer();
+    var buf: std.ArrayList(u8) = .empty;
+    defer buf.deinit(gpa);
+    const out = buf.writer(gpa);
 
     _ = try table.print(out);
     const expect =
@@ -713,6 +724,7 @@ test "test read from" {
 }
 
 test "test read from with title" {
+    const gpa = testing.allocator;
     const data =
         \\name, id, favorite food
         \\beau, 2, cereal
@@ -723,15 +735,15 @@ test "test read from with title" {
     var s = std.io.fixedBufferStream(data);
     const reader = s.reader();
 
-    var table = Table.init(testing.allocator);
+    var table = Table.init(gpa);
     defer table.deinit();
 
     var read_buf: [1024]u8 = undefined;
     try table.readFrom(reader, &read_buf, ",", true);
 
-    var buf = std.ArrayList(u8).init(testing.allocator);
-    defer buf.deinit();
-    const out = buf.writer();
+    var buf: std.ArrayList(u8) = .empty;
+    defer buf.deinit(gpa);
+    const out = buf.writer(gpa);
 
     _ = try table.print(out);
     const expect =
@@ -749,15 +761,16 @@ test "test read from with title" {
 }
 
 test "test color" {
-    var table = Table.init(testing.allocator);
+    const gpa = testing.allocator;
+    var table = Table.init(gpa);
     defer table.deinit();
 
     try table.addRow(&[_][]const u8{"1"});
     try table.setCellStyle(0, 0, .{ .bold = true, .fg = .red });
 
-    var buf = std.ArrayList(u8).init(testing.allocator);
-    defer buf.deinit();
-    const out = buf.writer();
+    var buf: std.ArrayList(u8) = .empty;
+    defer buf.deinit(gpa);
+    const out = buf.writer(gpa);
 
     _ = try table.printTerm(out);
     const expect = [_]u8{ 43, 45, 45, 45, 43, 10, 124, 32, 27, 91, 51, 49, 59, 52, 57, 59, 49, 109, 49, 27, 91, 48, 109, 32, 124, 10, 43, 45, 45, 45, 43, 10 };
@@ -766,22 +779,22 @@ test "test color" {
 }
 
 test "test table with unicode characters" {
-    const allocator = testing.allocator;
+    const gpa = testing.allocator;
 
     const row1 = [_][]const u8{ "姓名", "年龄", "职业" };
     const row2 = [_][]const u8{ "张三", "25", "工程师" };
     const row3 = [_][]const u8{ "李四", "30", "设计师" };
 
-    var table = Table.init(allocator);
+    var table = Table.init(gpa);
     defer table.deinit();
 
     try table.setTitle(&row1);
     try table.addRow(&row2);
     try table.addRow(&row3);
 
-    var buf = std.ArrayList(u8).init(allocator);
-    defer buf.deinit();
-    const out = buf.writer();
+    var buf: std.ArrayList(u8) = .empty;
+    defer buf.deinit(gpa);
+    const out = buf.writer(gpa);
 
     _ = try table.print(out);
 
@@ -792,22 +805,22 @@ test "test table with unicode characters" {
 }
 
 test "test table with emoji" {
-    const allocator = testing.allocator;
+    const gpa = testing.allocator;
 
     const row1 = [_][]const u8{ "Name", "Mood", "Status" };
     const row2 = [_][]const u8{ "Alice", "😊", "Happy" };
     const row3 = [_][]const u8{ "Bob", "😢", "Sad" };
 
-    var table = Table.init(allocator);
+    var table = Table.init(gpa);
     defer table.deinit();
 
     try table.setTitle(&row1);
     try table.addRow(&row2);
     try table.addRow(&row3);
 
-    var buf = std.ArrayList(u8).init(allocator);
-    defer buf.deinit();
-    const out = buf.writer();
+    var buf: std.ArrayList(u8) = .empty;
+    defer buf.deinit(gpa);
+    const out = buf.writer(gpa);
 
     _ = try table.print(out);
 
@@ -817,22 +830,22 @@ test "test table with emoji" {
 }
 
 test "test table mixed unicode and ascii" {
-    const allocator = testing.allocator;
+    const gpa = testing.allocator;
 
     const row1 = [_][]const u8{ "Product", "Price", "Review" };
     const row2 = [_][]const u8{ "苹果", "$2.99", "很好 👍" };
     const row3 = [_][]const u8{ "香蕉", "$1.99", "不错 😊" };
 
-    var table = Table.init(allocator);
+    var table = Table.init(gpa);
     defer table.deinit();
 
     try table.setTitle(&row1);
     try table.addRow(&row2);
     try table.addRow(&row3);
 
-    var buf = std.ArrayList(u8).init(allocator);
-    defer buf.deinit();
-    const out = buf.writer();
+    var buf: std.ArrayList(u8) = .empty;
+    defer buf.deinit(gpa);
+    const out = buf.writer(gpa);
 
     _ = try table.print(out);
 
