@@ -13,17 +13,15 @@ pub fn main() !void {
         &[_][]const u8{ "1", "2" },
     });
 
-    var buf: std.ArrayList(u8) = .empty;
-    defer buf.deinit(gpa);
-    const out = buf.writer(gpa);
-    _ = try table1.print(out);
+    var aw: std.Io.Writer.Allocating = .init(gpa);
+    _ = try table1.print(&aw.writer);
 
     var table2 = Table.init(gpa);
     defer table2.deinit();
 
     try table2.addRows(&[_][]const []const u8{
         &[_][]const u8{ "A", "B", "C" },
-        &[_][]const u8{ "This is\na multiline\ncell", "2", buf.items },
+        &[_][]const u8{ "This is\na multiline\ncell", "2", aw.written() },
     });
 
     try table2.printstd();

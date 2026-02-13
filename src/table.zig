@@ -265,9 +265,9 @@ pub const Table = struct {
         return colWidth;
     }
 
-    pub fn readFrom(self: *Self, reader: anytype, buf: []u8, sep: []const u8, has_title: bool) !void {
+    pub fn readFrom(self: *Self, reader: *std.Io.Reader, sep: []const u8, has_title: bool) !void {
         var flag = has_title;
-        while (try reader.readUntilDelimiterOrEof(buf, '\n')) |line| {
+        while (try reader.takeDelimiter('\n')) |line| {
             const i = self._data.items.len;
             var it = std.mem.splitSequence(u8, line, sep);
             while (it.next()) |data| {
@@ -318,35 +318,35 @@ pub const Table = struct {
         try stdout.flush();
     }
 
-    pub fn print(self: Self, out: anytype) !void {
-        _ = try self.internalPrint(out, Row.print);
+    pub fn print(self: Self, writer: *std.Io.Writer) !void {
+        _ = try self.internalPrint(writer, Row.print);
     }
 
-    pub fn printTerm(self: Self, out: anytype) !void {
-        _ = try self.internalPrint(out, Row.printTerm);
+    pub fn printTerm(self: Self, writer: *std.Io.Writer) !void {
+        _ = try self.internalPrint(writer, Row.printTerm);
     }
 
     // TODO: anytype
-    fn internalPrint(self: Self, out: anytype, f: fn (Row, anytype, TableFormat, []const usize) usize) !usize {
+    fn internalPrint(self: Self, writer: *std.Io.Writer, f: fn (Row, *std.Io.Writer, TableFormat, []const usize) usize) !usize {
         var height: usize = 0;
         var colWidth = try self.getAllColumnWidth(self.allocator);
         defer colWidth.deinit(self.allocator);
 
-        height += try self.format.printLineSeparator(out, colWidth.items, LinePosition.top);
+        height += try self.format.printLineSeparator(writer, colWidth.items, LinePosition.top);
         if (self.titles != null) {
-            height += f(self.titles.?, out, self.format, colWidth.items);
-            height += try self.format.printLineSeparator(out, colWidth.items, LinePosition.title);
+            height += f(self.titles.?, writer, self.format, colWidth.items);
+            height += try self.format.printLineSeparator(writer, colWidth.items, LinePosition.title);
         }
 
         for (0..self.rows.items.len) |i| {
             const r = self.rows.items[i];
-            height += f(r, out, self.format, colWidth.items);
+            height += f(r, writer, self.format, colWidth.items);
             if (i + 1 < self.rows.items.len) {
-                height += try self.format.printLineSeparator(out, colWidth.items, LinePosition.intern);
+                height += try self.format.printLineSeparator(writer, colWidth.items, LinePosition.intern);
             }
         }
 
-        height += try self.format.printLineSeparator(out, colWidth.items, LinePosition.bottom);
+        height += try self.format.printLineSeparator(writer, colWidth.items, LinePosition.bottom);
 
         return height;
     }
@@ -360,11 +360,9 @@ test "test print table" {
     defer table.deinit();
     try table.addRow(&row1);
 
-    var buf: std.ArrayList(u8) = .empty;
-    defer buf.deinit(gpa);
-    const out = buf.writer(gpa);
-
-    _ = try table.print(out);
+    var aw: std.Io.Writer.Allocating = .init(gpa);
+    defer aw.deinit();
+    _ = try table.print(&aw.writer);
 
     const expect =
         \\+-----+------+---------+
@@ -372,7 +370,10 @@ test "test print table" {
         \\+-----+------+---------+
         \\
     ;
-    try testing.expect(eql(u8, buf.items, expect));
+    try testing.expectEqualStrings(
+        expect,
+        aw.written(),
+    );
 }
 
 test "test print mulitline table" {
@@ -386,11 +387,9 @@ test "test print mulitline table" {
         &[_][]const u8{ "1", "2", "3" },
     });
 
-    var buf: std.ArrayList(u8) = .empty;
-    defer buf.deinit(gpa);
-    const out = buf.writer(gpa);
-
-    _ = try table.print(out);
+    var aw: std.Io.Writer.Allocating = .init(gpa);
+    defer aw.deinit();
+    _ = try table.print(&aw.writer);
 
     const expect =
         \\+--------+------+---------+
@@ -402,7 +401,7 @@ test "test print mulitline table" {
         \\+--------+------+---------+
         \\
     ;
-    try testing.expect(eql(u8, buf.items, expect));
+    try testing.expectEqualStrings(expect, aw.written());
 }
 
 test "test print table with title" {
@@ -416,11 +415,9 @@ test "test print table with title" {
     try table.addRow(&row1);
     try table.setTitle(&title);
 
-    var buf: std.ArrayList(u8) = .empty;
-    defer buf.deinit(gpa);
-    const out = buf.writer(gpa);
-
-    _ = try table.print(out);
+    var aw: std.Io.Writer.Allocating = .init(gpa);
+    defer aw.deinit();
+    _ = try table.print(&aw.writer);
 
     const expect =
         \\+--------+------+------+
@@ -430,7 +427,7 @@ test "test print table with title" {
         \\+--------+------+------+
         \\
     ;
-    try testing.expect(eql(u8, buf.items, expect));
+    try testing.expectEqualStrings(expect, aw.written());
 }
 
 test "test print table with format" {
@@ -442,11 +439,9 @@ test "test print table with format" {
     try table.addRow(&row1);
     table.setFormat(@import("./format.zig").FORMAT_BOX_CHARS);
 
-    var buf: std.ArrayList(u8) = .empty;
-    defer buf.deinit(gpa);
-    const out = buf.writer(gpa);
-
-    _ = try table.print(out);
+    var aw: std.Io.Writer.Allocating = .init(gpa);
+    defer aw.deinit();
+    _ = try table.print(&aw.writer);
 
     const expect =
         \\┌────────┬─────┬─────┐
@@ -454,7 +449,7 @@ test "test print table with format" {
         \\└────────┴─────┴─────┘
         \\
     ;
-    try testing.expect(eql(u8, buf.items, expect));
+    try testing.expectEqualStrings(expect, aw.written());
 }
 
 test "test print table with mulitline cell" {
@@ -466,11 +461,9 @@ test "test print table with mulitline cell" {
 
     try table.addRow(&row1);
 
-    var buf: std.ArrayList(u8) = .empty;
-    defer buf.deinit(gpa);
-    const out = buf.writer(gpa);
-
-    _ = try table.print(out);
+    var aw: std.Io.Writer.Allocating = .init(gpa);
+    defer aw.deinit();
+    _ = try table.print(&aw.writer);
 
     const expect =
         \\+-----+-----+-----+
@@ -479,7 +472,7 @@ test "test print table with mulitline cell" {
         \\+-----+-----+-----+
         \\
     ;
-    try testing.expect(eql(u8, buf.items, expect));
+    try testing.expectEqualStrings(expect, aw.written());
 }
 
 test "test print table with inconsistent columns" {
@@ -493,11 +486,9 @@ test "test print table with inconsistent columns" {
     try table.addRow(&row1);
     try table.addRow(&row2);
 
-    var buf: std.ArrayList(u8) = .empty;
-    defer buf.deinit(gpa);
-    const out = buf.writer(gpa);
-
-    _ = try table.print(out);
+    var aw: std.Io.Writer.Allocating = .init(gpa);
+    defer aw.deinit();
+    _ = try table.print(&aw.writer);
 
     const expect =
         \\+--------+-----+-----+
@@ -507,7 +498,7 @@ test "test print table with inconsistent columns" {
         \\+--------+-----+-----+
         \\
     ;
-    try testing.expect(eql(u8, buf.items, expect));
+    try testing.expectEqualStrings(expect, aw.written());
 }
 
 test "test nest table" {
@@ -516,33 +507,29 @@ test "test nest table" {
     const row1 = [_][]const u8{ "foobar", "foo", "bar" };
     const row2 = [_][]const u8{ "1", "2" };
 
-    var table1 = Table.init(testing.allocator);
-    defer table1.deinit();
+    var table_inner = Table.init(testing.allocator);
+    defer table_inner.deinit();
 
-    try table1.addRow(&row1);
-    try table1.addRow(&row2);
+    try table_inner.addRow(&row1);
+    try table_inner.addRow(&row2);
 
-    var buf: std.ArrayList(u8) = .empty;
-    defer buf.deinit(gpa);
-    var out = buf.writer(gpa);
-
-    _ = try table1.print(out);
+    var aw_inner: std.Io.Writer.Allocating = .init(gpa);
+    defer aw_inner.deinit();
+    _ = try table_inner.print(&aw_inner.writer);
 
     // Table 2
     const row3 = [_][]const u8{ "A", "B", "C" };
-    const row4 = [_][]const u8{ "1", "2", buf.items };
+    const row4 = [_][]const u8{ "1", "2", aw_inner.written() };
 
-    var table2 = Table.init(testing.allocator);
-    defer table2.deinit();
+    var table_outer = Table.init(testing.allocator);
+    defer table_outer.deinit();
 
-    try table2.addRow(&row3);
-    try table2.addRow(&row4);
+    try table_outer.addRow(&row3);
+    try table_outer.addRow(&row4);
 
-    var buf2: std.ArrayList(u8) = .empty;
-    defer buf2.deinit(gpa);
-    out = buf2.writer(gpa);
-
-    _ = try table2.print(out);
+    var aw_outer: std.Io.Writer.Allocating = .init(gpa);
+    defer aw_outer.deinit();
+    _ = try table_outer.print(&aw_outer.writer);
 
     const expect =
         \\+---+---+------------------------+
@@ -557,7 +544,7 @@ test "test nest table" {
         \\+---+---+------------------------+
         \\
     ;
-    try testing.expect(eql(u8, buf2.items, expect));
+    try testing.expectEqualStrings(expect, aw_outer.written());
 }
 
 test "test insert and remove row" {
@@ -574,11 +561,9 @@ test "test insert and remove row" {
     try table.insertRow(0, &row3);
     table.removeRow(1);
 
-    var buf: std.ArrayList(u8) = .empty;
-    defer buf.deinit(gpa);
-    const out = buf.writer(gpa);
-
-    _ = try table.print(out);
+    var aw: std.Io.Writer.Allocating = .init(gpa);
+    defer aw.deinit();
+    _ = try table.print(&aw.writer);
 
     const expect =
         \\+-----+------+---------+
@@ -588,7 +573,7 @@ test "test insert and remove row" {
         \\+-----+------+---------+
         \\
     ;
-    try testing.expect(eql(u8, buf.items, expect));
+    try testing.expectEqualStrings(expect, aw.written());
 }
 
 test "test get and set cell" {
@@ -606,11 +591,9 @@ test "test get and set cell" {
 
     try table.setCell(0, 0, "FOOBAR");
 
-    var buf: std.ArrayList(u8) = .empty;
-    defer buf.deinit(gpa);
-    const out = buf.writer(gpa);
-
-    _ = try table.print(out);
+    var aw: std.Io.Writer.Allocating = .init(gpa);
+    defer aw.deinit();
+    _ = try table.print(&aw.writer);
 
     const expect =
         \\+--------+-----+-----+
@@ -620,7 +603,7 @@ test "test get and set cell" {
         \\+--------+-----+-----+
         \\
     ;
-    try testing.expect(eql(u8, buf.items, expect));
+    try testing.expectEqualStrings(expect, aw.written());
 }
 
 test "test table alignment" {
@@ -636,11 +619,9 @@ test "test table alignment" {
 
     table.setAlign(Alignment.right);
 
-    var buf: std.ArrayList(u8) = .empty;
-    defer buf.deinit(gpa);
-    const out = buf.writer(gpa);
-
-    _ = try table.print(out);
+    var aw: std.Io.Writer.Allocating = .init(gpa);
+    defer aw.deinit();
+    _ = try table.print(&aw.writer);
 
     const expect =
         \\+-----+---------+-----+
@@ -650,7 +631,7 @@ test "test table alignment" {
         \\+-----+---------+-----+
         \\
     ;
-    try testing.expect(eql(u8, buf.items, expect));
+    try testing.expectEqualStrings(expect, aw.written());
 }
 
 test "test column alignment" {
@@ -666,11 +647,9 @@ test "test column alignment" {
 
     table.setColumnAlign(1, Alignment.right);
 
-    var buf: std.ArrayList(u8) = .empty;
-    defer buf.deinit(gpa);
-    const out = buf.writer(gpa);
-
-    _ = try table.print(out);
+    var aw: std.Io.Writer.Allocating = .init(gpa);
+    defer aw.deinit();
+    _ = try table.print(&aw.writer);
 
     const expect =
         \\+-----+---------+-----+
@@ -680,7 +659,7 @@ test "test column alignment" {
         \\+-----+---------+-----+
         \\
     ;
-    try testing.expect(eql(u8, buf.items, expect));
+    try testing.expectEqualStrings(expect, aw.written());
 }
 
 test "test read from" {
@@ -693,20 +672,16 @@ test "test read from" {
         \\
     ;
 
-    var s = std.io.fixedBufferStream(data);
-    const reader = s.reader();
+    var reader: std.Io.Reader = .fixed(data);
 
     var table = Table.init(gpa);
     defer table.deinit();
 
-    var read_buf: [1024]u8 = undefined;
-    try table.readFrom(reader, &read_buf, ",", false);
+    try table.readFrom(&reader, ",", false);
 
-    var buf: std.ArrayList(u8) = .empty;
-    defer buf.deinit(gpa);
-    const out = buf.writer(gpa);
-
-    _ = try table.print(out);
+    var aw: std.Io.Writer.Allocating = .init(gpa);
+    defer aw.deinit();
+    _ = try table.print(&aw.writer);
     const expect =
         \\+---------+----+------------+
         \\| quincy  |  1 |  hot dogs  |
@@ -720,7 +695,7 @@ test "test read from" {
         \\
     ;
 
-    try testing.expect(eql(u8, buf.items, expect));
+    try testing.expectEqualStrings(expect, aw.written());
 }
 
 test "test read from with title" {
@@ -732,20 +707,16 @@ test "test read from with title" {
         \\
     ;
 
-    var s = std.io.fixedBufferStream(data);
-    const reader = s.reader();
+    var reader: std.Io.Reader = .fixed(data);
 
     var table = Table.init(gpa);
     defer table.deinit();
 
-    var read_buf: [1024]u8 = undefined;
-    try table.readFrom(reader, &read_buf, ",", true);
+    try table.readFrom(&reader, ",", true);
 
-    var buf: std.ArrayList(u8) = .empty;
-    defer buf.deinit(gpa);
-    const out = buf.writer(gpa);
-
-    _ = try table.print(out);
+    var aw: std.Io.Writer.Allocating = .init(gpa);
+    defer aw.deinit();
+    _ = try table.print(&aw.writer);
     const expect =
         \\+-------+-----+----------------+
         \\| name  |  id |  favorite food |
@@ -757,7 +728,7 @@ test "test read from with title" {
         \\
     ;
 
-    try testing.expect(eql(u8, buf.items, expect));
+    try testing.expectEqualStrings(expect, aw.written());
 }
 
 test "test color" {
@@ -768,14 +739,12 @@ test "test color" {
     try table.addRow(&[_][]const u8{"1"});
     try table.setCellStyle(0, 0, .{ .bold = true, .fg = .red });
 
-    var buf: std.ArrayList(u8) = .empty;
-    defer buf.deinit(gpa);
-    const out = buf.writer(gpa);
-
-    _ = try table.printTerm(out);
+    var aw: std.Io.Writer.Allocating = .init(gpa);
+    defer aw.deinit();
+    _ = try table.printTerm(&aw.writer);
     const expect = [_]u8{ 43, 45, 45, 45, 43, 10, 124, 32, 27, 91, 51, 49, 59, 52, 57, 59, 49, 109, 49, 27, 91, 48, 109, 32, 124, 10, 43, 45, 45, 45, 43, 10 };
 
-    try testing.expect(eql(u8, buf.items, &expect));
+    try testing.expect(eql(u8, aw.written(), &expect));
 }
 
 test "test table with unicode characters" {
@@ -792,16 +761,14 @@ test "test table with unicode characters" {
     try table.addRow(&row2);
     try table.addRow(&row3);
 
-    var buf: std.ArrayList(u8) = .empty;
-    defer buf.deinit(gpa);
-    const out = buf.writer(gpa);
-
-    _ = try table.print(out);
+    var aw: std.Io.Writer.Allocating = .init(gpa);
+    defer aw.deinit();
+    _ = try table.print(&aw.writer);
 
     // Verify output contains correct Unicode characters
-    try testing.expect(std.mem.indexOf(u8, buf.items, "姓名") != null);
-    try testing.expect(std.mem.indexOf(u8, buf.items, "张三") != null);
-    try testing.expect(std.mem.indexOf(u8, buf.items, "工程师") != null);
+    try testing.expect(std.mem.indexOf(u8, aw.written(), "姓名") != null);
+    try testing.expect(std.mem.indexOf(u8, aw.written(), "张三") != null);
+    try testing.expect(std.mem.indexOf(u8, aw.written(), "工程师") != null);
 }
 
 test "test table with emoji" {
@@ -818,15 +785,13 @@ test "test table with emoji" {
     try table.addRow(&row2);
     try table.addRow(&row3);
 
-    var buf: std.ArrayList(u8) = .empty;
-    defer buf.deinit(gpa);
-    const out = buf.writer(gpa);
-
-    _ = try table.print(out);
+    var aw: std.Io.Writer.Allocating = .init(gpa);
+    defer aw.deinit();
+    _ = try table.print(&aw.writer);
 
     // Verify output contains correct emoji
-    try testing.expect(std.mem.indexOf(u8, buf.items, "😊") != null);
-    try testing.expect(std.mem.indexOf(u8, buf.items, "😢") != null);
+    try testing.expect(std.mem.indexOf(u8, aw.written(), "😊") != null);
+    try testing.expect(std.mem.indexOf(u8, aw.written(), "😢") != null);
 }
 
 test "test table mixed unicode and ascii" {
@@ -843,14 +808,12 @@ test "test table mixed unicode and ascii" {
     try table.addRow(&row2);
     try table.addRow(&row3);
 
-    var buf: std.ArrayList(u8) = .empty;
-    defer buf.deinit(gpa);
-    const out = buf.writer(gpa);
-
-    _ = try table.print(out);
+    var aw: std.Io.Writer.Allocating = .init(gpa);
+    defer aw.deinit();
+    _ = try table.print(&aw.writer);
 
     // Verify output contains mixed characters
-    try testing.expect(std.mem.indexOf(u8, buf.items, "苹果") != null);
-    try testing.expect(std.mem.indexOf(u8, buf.items, "👍") != null);
-    try testing.expect(std.mem.indexOf(u8, buf.items, "😊") != null);
+    try testing.expect(std.mem.indexOf(u8, aw.written(), "苹果") != null);
+    try testing.expect(std.mem.indexOf(u8, aw.written(), "👍") != null);
+    try testing.expect(std.mem.indexOf(u8, aw.written(), "😊") != null);
 }

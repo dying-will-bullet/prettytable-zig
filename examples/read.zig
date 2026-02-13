@@ -10,13 +10,12 @@ pub fn main() !void {
         \\
     ;
 
-    var s = std.io.fixedBufferStream(data);
-    const reader = s.reader();
+    var reader: std.Io.Reader = .fixed(data);
+
     var table = Table.init(std.heap.page_allocator);
     defer table.deinit();
 
-    var read_buf: [1024]u8 = undefined;
-    try table.readFrom(reader, &read_buf, ",", true);
+    try table.readFrom(&reader, ",", true);
 
     try table.printstd();
     // +-------+-----+----------------+

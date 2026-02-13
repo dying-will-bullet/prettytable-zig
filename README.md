@@ -191,13 +191,11 @@ One scenario is to read data from a CSV file.
         \\
     ;
 
-    var s = std.io.fixedBufferStream(data);
-    var reader = s.reader();
+    var reader: std.Io.Reader = .fixed(data);
     var table = Table.init(std.heap.page_allocator);
     defer table.deinit();
 
-    var read_buf: [1024]u8 = undefined;
-    try table.readFrom(reader, &read_buf, ",", true);
+    try table.readFrom(&reader, ",", true);
 
     try table.printstd();
 ```
@@ -205,13 +203,11 @@ One scenario is to read data from a CSV file.
 ### Get the table as string(bytes)
 
 ```zig
-    var buf: std.ArrayList(u8) = .empty;
-    defer buf.deinit(std.heap.page_allocator);
+    var aw: std.Io.Writer.Allocating = .init(std.heap.page_allocator);
+    defer aw.deinit();
+    _ = try table.print(&aw.writer);
 
-    var out = buf.writer(std.heap.page_allocator);
-    _ = try table.print(out);
-
-    // buf.items is the bytes of table
+    // aw.written() is the bytes of table
 ```
 
 ### Change print format

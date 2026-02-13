@@ -162,22 +162,22 @@ pub const Row = struct {
         return 0;
     }
 
-    pub fn print(self: Self, out: anytype, format: TableFormat, colWidth: []const usize) usize {
-        return self.internalPrint(out, format, colWidth, Cell.print) catch return 0;
+    pub fn print(self: Self, writer: *std.Io.Writer, format: TableFormat, colWidth: []const usize) usize {
+        return self.internalPrint(writer, format, colWidth, Cell.print) catch return 0;
     }
 
-    pub fn printTerm(self: Self, out: anytype, format: TableFormat, colWidth: []const usize) usize {
-        return self.internalPrint(out, format, colWidth, Cell.printTerm) catch return 0;
+    pub fn printTerm(self: Self, writer: *std.Io.Writer, format: TableFormat, colWidth: []const usize) usize {
+        return self.internalPrint(writer, format, colWidth, Cell.printTerm) catch return 0;
     }
 
-    fn internalPrint(self: Self, out: anytype, format: TableFormat, colWidth: []const usize, f: fn (Cell, allocator: std.mem.Allocator, out: anytype, usize, usize, bool) void) !usize {
+    fn internalPrint(self: Self, writer: *std.Io.Writer, format: TableFormat, colWidth: []const usize, f: fn (Cell, allocator: std.mem.Allocator, writer: *std.Io.Writer, usize, usize, bool) void) !usize {
         const height = self.getHeight();
         for (0..height) |i| {
             for (0..format.getIndent()) |_| {
-                _ = try out.write(" ");
+                _ = try writer.write(" ");
             }
 
-            try format.printColumnSeparator(out, ColumnPosition.left);
+            try format.printColumnSeparator(writer, ColumnPosition.left);
 
             const lp = format.getLPadding();
             const rp = format.getRPadding();
@@ -188,7 +188,7 @@ pub const Row = struct {
             while (j + hspan < colWidth.len) {
                 var k: usize = 0;
                 while (k < lp) {
-                    _ = try out.write(" "); // Left padding
+                    _ = try writer.write(" "); // Left padding
                     k += 1;
                 }
                 // skip_r_fill skip filling the end of the last cell if there's no character
@@ -198,7 +198,7 @@ pub const Row = struct {
                 if (cell == null) {
                     var empty = try Cell.default(self.allocator);
                     defer empty.deinit();
-                    _ = f(empty, self.allocator, out, i, colWidth[j + hspan], skip_r_fill);
+                    _ = f(empty, self.allocator, writer, i, colWidth[j + hspan], skip_r_fill);
                 } else {
 
                     // In case of horizontal spanning, width is the sum of all spanned columns' width
@@ -219,21 +219,21 @@ pub const Row = struct {
                     }
 
                     // Print cell content
-                    _ = f(cell.?, self.allocator, out, i, w, skip_r_fill);
+                    _ = f(cell.?, self.allocator, writer, i, w, skip_r_fill);
                     hspan += real_span; // Add span to offset
                 }
                 var n: usize = 0;
                 while (n < rp) {
                     n += 1;
                 }
-                _ = try out.write(" "); // Right padding
+                _ = try writer.write(" "); // Right padding
                 if (j + hspan < colWidth.len - 1) {
-                    try format.printColumnSeparator(out, ColumnPosition.intern);
+                    try format.printColumnSeparator(writer, ColumnPosition.intern);
                 }
                 j += 1;
             }
-            try format.printColumnSeparator(out, ColumnPosition.right);
-            _ = try out.writeAll(line_sep);
+            try format.printColumnSeparator(writer, ColumnPosition.right);
+            _ = try writer.writeAll(line_sep);
         }
         return height;
     }
@@ -323,18 +323,20 @@ test "test remove cell" {
 }
 
 test "test print" {
+    const gpa = testing.allocator;
     const t = @import("./format.zig");
     const data = [_][]const u8{ "foo", "bar", "foobar" };
-    var r = try row(testing.allocator, &data);
+    var r = try row(gpa, &data);
     defer r.deinit();
 
-    var buf: std.ArrayList(u8) = .empty;
-    defer buf.deinit(testing.allocator);
+    var aw: std.Io.Writer.Allocating = .init(gpa);
+    defer aw.deinit();
+    _ = r.print(&aw.writer, t.FORMAT_DEFAULT, &[_]usize{ 10, 10, 10 });
 
-    const out = buf.writer(testing.allocator);
-    _ = r.print(out, t.FORMAT_DEFAULT, &[_]usize{ 10, 10, 10 });
-
-    try testing.expect(eql(u8, buf.items, "| foo        | bar        | foobar     |" ++ line_sep));
+    try testing.expectEqualStrings(
+        "| foo        | bar        | foobar     |" ++ line_sep,
+        aw.written(),
+    );
 }
 
 // test "test extend cell" {
