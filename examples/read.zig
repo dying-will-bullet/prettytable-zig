@@ -13,6 +13,7 @@ pub fn main(init: std.process.Init) !void {
     ;
 
     var reader: std.Io.Reader = .fixed(data);
+
     var table = Table.init(std.heap.page_allocator);
     defer table.deinit();
 
