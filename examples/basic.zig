@@ -2,7 +2,9 @@ const std = @import("std");
 const Table = @import("prettytable").Table;
 const FORMAT_BOX_CHARS = @import("prettytable").FORMAT_BOX_CHARS;
 
-pub fn main() !void {
+pub fn main(init: std.process.Init) !void {
+    const io = init.io;
+
     // Create ad table
     var table = Table.init(std.heap.page_allocator);
     defer table.deinit();
@@ -15,7 +17,7 @@ pub fn main() !void {
     // add single row
     try table.addRow(&[_][]const u8{ "1", "2", "3" });
 
-    try table.printstd();
+    try table.printstd(io);
     // +-----+-----+-----+
     // | A   | B   | C   |
     // +-----+-----+-----+

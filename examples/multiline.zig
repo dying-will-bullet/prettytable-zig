@@ -2,7 +2,9 @@ const std = @import("std");
 const Table = @import("prettytable").Table;
 const FORMAT_BOX_CHARS = @import("prettytable").FORMAT_BOX_CHARS;
 
-pub fn main() !void {
+pub fn main(init: std.process.Init) !void {
+    const io = init.io;
+
     const gpa = std.heap.page_allocator;
 
     var table1 = Table.init(gpa);
@@ -13,20 +15,19 @@ pub fn main() !void {
         &[_][]const u8{ "1", "2" },
     });
 
-    var buf: std.ArrayList(u8) = .empty;
-    defer buf.deinit(gpa);
-    const out = buf.writer(gpa);
-    _ = try table1.print(out);
+    var out: std.Io.Writer.Allocating = .init(gpa);
+    defer out.deinit();
+    _ = try table1.print(&out.writer);
 
     var table2 = Table.init(gpa);
     defer table2.deinit();
 
     try table2.addRows(&[_][]const []const u8{
         &[_][]const u8{ "A", "B", "C" },
-        &[_][]const u8{ "This is\na multiline\ncell", "2", buf.items },
+        &[_][]const u8{ "This is\na multiline\ncell", "2", out.written() },
     });
 
-    try table2.printstd();
+    try table2.printstd(io);
 
     // +-------------+---+------------------------+
     // | A           | B | C                      |

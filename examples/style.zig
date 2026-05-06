@@ -2,7 +2,9 @@ const std = @import("std");
 const Table = @import("prettytable").Table;
 const FORMAT_BOX_CHARS = @import("prettytable").FORMAT_BOX_CHARS;
 
-pub fn main() !void {
+pub fn main(init: std.process.Init ) !void {
+    const io = init.io;
+
     var table = Table.init(std.heap.page_allocator);
     defer table.deinit();
 
@@ -18,5 +20,5 @@ pub fn main() !void {
     try table.setCellStyle(1, 0, .{ .fg = .black, .bg = .cyan });
     try table.setCellStyle(1, 1, .{ .fg = .black, .bg = .blue });
     try table.setCellStyle(1, 2, .{ .fg = .black, .bg = .white });
-    _ = try table.print_tty(true);
+    _ = try table.print_tty(io, true);
 }
