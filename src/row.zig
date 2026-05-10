@@ -162,22 +162,22 @@ pub const Row = struct {
         return 0;
     }
 
-    pub fn print(self: Self, writer: *std.Io.Writer, format: TableFormat, colWidth: []const usize) usize {
-        return self.internalPrint(writer, format, colWidth, Cell.print) catch return 0;
+    pub fn write(self: Self, writer: *std.Io.Writer, format: TableFormat, colWidth: []const usize) usize {
+        return self.internalWrite(writer, format, colWidth, Cell.write) catch return 0;
     }
 
-    pub fn printTerm(self: Self, writer: *std.Io.Writer, format: TableFormat, colWidth: []const usize) usize {
-        return self.internalPrint(writer, format, colWidth, Cell.printTerm) catch return 0;
+    pub fn writeAnsi(self: Self, writer: *std.Io.Writer, format: TableFormat, colWidth: []const usize) usize {
+        return self.internalWrite(writer, format, colWidth, Cell.writeAnsi) catch return 0;
     }
 
-    fn internalPrint(self: Self, writer: *std.Io.Writer, format: TableFormat, colWidth: []const usize, f: fn (Cell, allocator: std.mem.Allocator, writer: *std.Io.Writer, usize, usize, bool) void) !usize {
+    fn internalWrite(self: Self, writer: *std.Io.Writer, format: TableFormat, colWidth: []const usize, f: fn (Cell, allocator: std.mem.Allocator, writer: *std.Io.Writer, usize, usize, bool) void) !usize {
         const height = self.getHeight();
         for (0..height) |i| {
             for (0..format.getIndent()) |_| {
                 try writer.writeAll(" ");
             }
 
-            try format.printColumnSeparator(writer, ColumnPosition.left);
+            try format.writeColumnSeparator(writer, ColumnPosition.left);
 
             const lp = format.getLPadding();
             const rp = format.getRPadding();
@@ -218,7 +218,7 @@ pub const Row = struct {
                         w += real_span * 1;
                     }
 
-                    // Print cell content
+                    // Write cell content.
                     _ = f(cell.?, self.allocator, writer, i, w, skip_r_fill);
                     hspan += real_span; // Add span to offset
                 }
@@ -228,11 +228,11 @@ pub const Row = struct {
                 }
                 try writer.writeAll(" "); // Right padding
                 if (j + hspan < colWidth.len - 1) {
-                    try format.printColumnSeparator(writer, ColumnPosition.intern);
+                    try format.writeColumnSeparator(writer, ColumnPosition.intern);
                 }
                 j += 1;
             }
-            try format.printColumnSeparator(writer, ColumnPosition.right);
+            try format.writeColumnSeparator(writer, ColumnPosition.right);
             _ = try writer.writeAll(line_sep);
         }
         return height;
@@ -322,7 +322,7 @@ test "test remove cell" {
     try testing.expect(r.len() == 2);
 }
 
-test "test print" {
+test "test write" {
     const allocator = testing.allocator;
     const t = @import("./format.zig");
     const data = [_][]const u8{ "foo", "bar", "foobar" };
@@ -331,7 +331,7 @@ test "test print" {
 
     var out: std.Io.Writer.Allocating = .init(allocator);
     defer out.deinit();
-    _ = r.print(&out.writer, t.FORMAT_DEFAULT, &[_]usize{ 10, 10, 10 });
+    _ = r.write(&out.writer, t.FORMAT_DEFAULT, &[_]usize{ 10, 10, 10 });
 
     try testing.expectEqualStrings(
         "| foo        | bar        | foobar     |" ++ line_sep,

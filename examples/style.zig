@@ -21,5 +21,5 @@ pub fn main(init: std.process.Init) !void {
     try table.setCellStyle(1, 0, .{ .fg = .black, .bg = .cyan });
     try table.setCellStyle(1, 1, .{ .fg = .black, .bg = .blue });
     try table.setCellStyle(1, 2, .{ .fg = .black, .bg = .white });
-    _ = try table.print_tty(io, true);
+    try table.printStdoutAnsi(io);
 }

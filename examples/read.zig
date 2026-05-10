@@ -13,14 +13,12 @@ pub fn main(init: std.process.Init) !void {
         \\
     ;
 
-    var reader: std.Io.Reader = .fixed(data);
-
     var table = Table.init(allocator);
     defer table.deinit();
 
-    try table.readFrom(&reader, ",", true);
+    try table.readDelimited(data, .{ .separator = ",", .has_title = true });
 
-    try table.printstd(io);
+    try table.printStdout(io);
     // +-------+-----+----------------+
     // | name  |  id |  favorite food |
     // +=======+=====+================+

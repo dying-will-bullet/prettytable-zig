@@ -22,6 +22,14 @@ pub const Table = struct {
 
     const Self = @This();
 
+    /// Options for `readFrom` and `readDelimited`.
+    pub const ReadOptions = struct {
+        /// Column separator used to split each input line.
+        separator: []const u8 = ",",
+        /// Whether the first parsed line should be treated as the table title.
+        has_title: bool = false,
+    };
+
     pub fn init(allocator: std.mem.Allocator) Self {
         return Self{
             .allocator = allocator,
@@ -257,11 +265,13 @@ pub const Table = struct {
         return colWidth;
     }
 
-    pub fn readFrom(self: *Self, reader: *std.Io.Reader, sep: []const u8, has_title: bool) !void {
-        var flag = has_title;
+    /// Read delimited records from a reader and append them into the table.
+    /// Parsed fields are owned by the table and released in `deinit`.
+    pub fn readFrom(self: *Self, reader: *std.Io.Reader, options: ReadOptions) !void {
+        var flag = options.has_title;
         while (try reader.takeDelimiter('\n')) |line| {
             const i = self._data.items.len;
-            var it = std.mem.splitSequence(u8, line, sep);
+            var it = std.mem.splitSequence(u8, line, options.separator);
             while (it.next()) |data| {
                 const new_data = try self.allocator.alloc(u8, data.len);
                 @memcpy(new_data, data);
@@ -276,74 +286,89 @@ pub const Table = struct {
         }
     }
 
-    /// Print the table to standard output. Colors won't be displayed unless
-    /// stdout is a tty terminal. This means that if stdout is redirected to a file, or piped
-    /// to another program, no color will be displayed.
-    /// To force colors rendering, use `print_tty()` method.
-    /// Any failure to print is ignored. For better control, use `print_tty()`.
-    /// Calling `printstd()` is equivalent to calling `print_tty(false)` and ignoring the result.
-    pub fn printstd(self: Self, io: std.Io) !void {
-        try self.print_tty(io, false);
+    /// Read delimited records from an in-memory byte slice.
+    /// This is a convenience wrapper over `readFrom`.
+    pub fn readDelimited(self: *Self, data: []const u8, options: ReadOptions) !void {
+        var reader: std.Io.Reader = .fixed(data);
+        try self.readFrom(&reader, options);
     }
 
-    /// Print the table to standard output. Colors won't be displayed unless
-    /// stdout is a tty terminal, or `force_colorize` is set to `true`.
-    /// In ANSI terminals, colors are displayed using ANSI escape characters. When for example the
-    /// output is redirected to a file, or piped to another program, the output is considered
-    /// as not beeing tty, and ANSI escape characters won't be displayed unless `force colorize`
-    /// is set to `true`.
-    /// # Returns
-    /// A `Result` holding the number of lines printed, or an `io::Error` if any failure happens
-    pub fn print_tty(self: Self, io: std.Io, force_colorize: bool) !void {
-        // TODO: color
-
-        // _ = force_colorize;
+    /// Write the table to stdout without ANSI styling.
+    /// This helper creates a buffered stdout writer and flushes before returning.
+    pub fn printStdout(self: Self, io: std.Io) !void {
         var stdout_buffer: [1024]u8 = undefined;
         var stdout_writer = std.Io.File.stdout().writer(io, &stdout_buffer);
         const stdout = &stdout_writer.interface;
 
-        if (force_colorize) {
-            _ = try self.printTerm(stdout);
-        } else {
-            _ = try self.internalPrint(stdout, Row.print);
-        }
+        try self.write(stdout);
         try stdout.flush();
     }
 
-    pub fn print(self: Self, writer: *std.Io.Writer) !void {
-        _ = try self.internalPrint(writer, Row.print);
+    /// Write the table to stdout with ANSI styling enabled.
+    /// This helper creates a buffered stdout writer and flushes before returning.
+    pub fn printStdoutAnsi(self: Self, io: std.Io) !void {
+        var stdout_buffer: [1024]u8 = undefined;
+        var stdout_writer = std.Io.File.stdout().writer(io, &stdout_buffer);
+        const stdout = &stdout_writer.interface;
+
+        try self.writeAnsi(stdout);
+        try stdout.flush();
     }
 
-    pub fn printTerm(self: Self, writer: *std.Io.Writer) !void {
-        _ = try self.internalPrint(writer, Row.printTerm);
+    /// Write the table to any `std.Io.Writer` without ANSI styling.
+    pub fn write(self: Self, writer: *std.Io.Writer) !void {
+        _ = try self.internalWrite(writer, Row.write);
     }
 
-    fn internalPrint(self: Self, writer: *std.Io.Writer, f: fn (Row, *std.Io.Writer, TableFormat, []const usize) usize) !usize {
+    /// Write the table to any `std.Io.Writer` with ANSI styling.
+    pub fn writeAnsi(self: Self, writer: *std.Io.Writer) !void {
+        _ = try self.internalWrite(writer, Row.writeAnsi);
+    }
+
+    /// Render the table to an owned byte slice without ANSI styling.
+    /// The caller owns the returned memory and must free it with `allocator`.
+    pub fn toOwnedSlice(self: Self, allocator: std.mem.Allocator) ![]u8 {
+        var out: std.Io.Writer.Allocating = .init(allocator);
+        defer out.deinit();
+        try self.write(&out.writer);
+        return try out.toOwnedSlice();
+    }
+
+    /// Render the table to an owned byte slice with ANSI styling.
+    /// The caller owns the returned memory and must free it with `allocator`.
+    pub fn toOwnedSliceAnsi(self: Self, allocator: std.mem.Allocator) ![]u8 {
+        var out: std.Io.Writer.Allocating = .init(allocator);
+        defer out.deinit();
+        try self.writeAnsi(&out.writer);
+        return try out.toOwnedSlice();
+    }
+
+    fn internalWrite(self: Self, writer: *std.Io.Writer, f: fn (Row, *std.Io.Writer, TableFormat, []const usize) usize) !usize {
         var height: usize = 0;
         var colWidth = try self.getAllColumnWidth(self.allocator);
         defer colWidth.deinit(self.allocator);
 
-        height += try self.format.printLineSeparator(writer, colWidth.items, LinePosition.top);
+        height += try self.format.writeLineSeparator(writer, colWidth.items, LinePosition.top);
         if (self.titles != null) {
             height += f(self.titles.?, writer, self.format, colWidth.items);
-            height += try self.format.printLineSeparator(writer, colWidth.items, LinePosition.title);
+            height += try self.format.writeLineSeparator(writer, colWidth.items, LinePosition.title);
         }
 
         for (0..self.rows.items.len) |i| {
             const r = self.rows.items[i];
             height += f(r, writer, self.format, colWidth.items);
             if (i + 1 < self.rows.items.len) {
-                height += try self.format.printLineSeparator(writer, colWidth.items, LinePosition.intern);
+                height += try self.format.writeLineSeparator(writer, colWidth.items, LinePosition.intern);
             }
         }
 
-        height += try self.format.printLineSeparator(writer, colWidth.items, LinePosition.bottom);
+        height += try self.format.writeLineSeparator(writer, colWidth.items, LinePosition.bottom);
 
         return height;
     }
 };
 
-test "test print table" {
+test "test write table" {
     const gpa = testing.allocator;
     const row1 = [_][]const u8{ "ABC", "DEFG", "HIJKLMN" };
 
@@ -353,7 +378,7 @@ test "test print table" {
 
     var out: std.Io.Writer.Allocating = .init(gpa);
     defer out.deinit();
-    _ = try table.print(&out.writer);
+    try table.write(&out.writer);
 
     const expect =
         \\+-----+------+---------+
@@ -367,7 +392,44 @@ test "test print table" {
     );
 }
 
-test "test print mulitline table" {
+test "test table to owned slice" {
+    const gpa = testing.allocator;
+    const row1 = [_][]const u8{ "ABC", "DEFG", "HIJKLMN" };
+
+    var table = Table.init(gpa);
+    defer table.deinit();
+    try table.addRow(&row1);
+
+    const output = try table.toOwnedSlice(gpa);
+    defer gpa.free(output);
+
+    const expect =
+        \\+-----+------+---------+
+        \\| ABC | DEFG | HIJKLMN |
+        \\+-----+------+---------+
+        \\
+    ;
+    try testing.expectEqualStrings(expect, output);
+}
+
+test "test write ansi table" {
+    const gpa = testing.allocator;
+
+    var table = Table.init(gpa);
+    defer table.deinit();
+
+    try table.addRow(&[_][]const u8{"1"});
+    try table.setCellStyle(0, 0, .{ .bold = true, .fg = .red });
+
+    var out: std.Io.Writer.Allocating = .init(gpa);
+    defer out.deinit();
+    try table.writeAnsi(&out.writer);
+
+    const expect = [_]u8{ 43, 45, 45, 45, 43, 10, 124, 32, 27, 91, 51, 49, 59, 52, 57, 59, 49, 109, 49, 27, 91, 48, 109, 32, 124, 10, 43, 45, 45, 45, 43, 10 };
+    try testing.expect(eql(u8, out.written(), &expect));
+}
+
+test "test write mulitline table" {
     const gpa = testing.allocator;
     var table = Table.init(gpa);
     defer table.deinit();
@@ -380,7 +442,7 @@ test "test print mulitline table" {
 
     var out: std.Io.Writer.Allocating = .init(gpa);
     defer out.deinit();
-    _ = try table.print(&out.writer);
+    try table.write(&out.writer);
 
     const expect =
         \\+--------+------+---------+
@@ -395,7 +457,7 @@ test "test print mulitline table" {
     try testing.expectEqualStrings(expect, out.written());
 }
 
-test "test print table with title" {
+test "test write table with title" {
     const gpa = testing.allocator;
     const title = [_][]const u8{ "col1", "col2", "col3" };
     const row1 = [_][]const u8{ "foobar", "foo", "bar" };
@@ -408,7 +470,7 @@ test "test print table with title" {
 
     var out: std.Io.Writer.Allocating = .init(gpa);
     defer out.deinit();
-    _ = try table.print(&out.writer);
+    try table.write(&out.writer);
 
     const expect =
         \\+--------+------+------+
@@ -421,7 +483,7 @@ test "test print table with title" {
     try testing.expectEqualStrings(expect, out.written());
 }
 
-test "test print table with format" {
+test "test write table with format" {
     const gpa = testing.allocator;
     const row1 = [_][]const u8{ "foobar", "foo", "bar" };
 
@@ -432,7 +494,7 @@ test "test print table with format" {
 
     var out: std.Io.Writer.Allocating = .init(gpa);
     defer out.deinit();
-    _ = try table.print(&out.writer);
+    try table.write(&out.writer);
 
     const expect =
         \\┌────────┬─────┬─────┐
@@ -443,7 +505,7 @@ test "test print table with format" {
     try testing.expectEqualStrings(expect, out.written());
 }
 
-test "test print table with mulitline cell" {
+test "test write table with mulitline cell" {
     const gpa = testing.allocator;
     const row1 = [_][]const u8{ "foo\nbar", "foo", "bar" };
 
@@ -454,7 +516,7 @@ test "test print table with mulitline cell" {
 
     var out: std.Io.Writer.Allocating = .init(gpa);
     defer out.deinit();
-    _ = try table.print(&out.writer);
+    try table.write(&out.writer);
 
     const expect =
         \\+-----+-----+-----+
@@ -466,7 +528,7 @@ test "test print table with mulitline cell" {
     try testing.expectEqualStrings(expect, out.written());
 }
 
-test "test print table with inconsistent columns" {
+test "test write table with inconsistent columns" {
     const gpa = testing.allocator;
     const row1 = [_][]const u8{ "foobar", "foo", "bar" };
     const row2 = [_][]const u8{ "1", "2" };
@@ -479,7 +541,7 @@ test "test print table with inconsistent columns" {
 
     var out: std.Io.Writer.Allocating = .init(gpa);
     defer out.deinit();
-    _ = try table.print(&out.writer);
+    try table.write(&out.writer);
 
     const expect =
         \\+--------+-----+-----+
@@ -506,7 +568,7 @@ test "test nest table" {
 
     var out1: std.Io.Writer.Allocating = .init(gpa);
     defer out1.deinit();
-    _ = try table1.print(&out1.writer);
+    try table1.write(&out1.writer);
 
     // Table 2
     const row3 = [_][]const u8{ "A", "B", "C" };
@@ -520,7 +582,7 @@ test "test nest table" {
 
     var out2: std.Io.Writer.Allocating = .init(gpa);
     defer out2.deinit();
-    _ = try table2.print(&out2.writer);
+    try table2.write(&out2.writer);
 
     const expect =
         \\+---+---+------------------------+
@@ -554,7 +616,7 @@ test "test insert and remove row" {
 
     var out: std.Io.Writer.Allocating = .init(gpa);
     defer out.deinit();
-    _ = try table.print(&out.writer);
+    try table.write(&out.writer);
 
     const expect =
         \\+-----+------+---------+
@@ -584,7 +646,7 @@ test "test get and set cell" {
 
     var out: std.Io.Writer.Allocating = .init(gpa);
     defer out.deinit();
-    _ = try table.print(&out.writer);
+    try table.write(&out.writer);
 
     const expect =
         \\+--------+-----+-----+
@@ -612,7 +674,7 @@ test "test table alignment" {
 
     var out: std.Io.Writer.Allocating = .init(gpa);
     defer out.deinit();
-    _ = try table.print(&out.writer);
+    try table.write(&out.writer);
 
     const expect =
         \\+-----+---------+-----+
@@ -640,7 +702,7 @@ test "test column alignment" {
 
     var out: std.Io.Writer.Allocating = .init(gpa);
     defer out.deinit();
-    _ = try table.print(&out.writer);
+    try table.write(&out.writer);
 
     const expect =
         \\+-----+---------+-----+
@@ -668,11 +730,11 @@ test "test read from" {
     var table = Table.init(gpa);
     defer table.deinit();
 
-    try table.readFrom(&reader, ",", false);
+    try table.readFrom(&reader, .{ .separator = ",", .has_title = false });
 
     var out: std.Io.Writer.Allocating = .init(gpa);
     defer out.deinit();
-    _ = try table.print(&out.writer);
+    try table.write(&out.writer);
     const expect =
         \\+---------+----+------------+
         \\| quincy  |  1 |  hot dogs  |
@@ -703,11 +765,11 @@ test "test read from with title" {
     var table = Table.init(gpa);
     defer table.deinit();
 
-    try table.readFrom(&reader, ",", true);
+    try table.readFrom(&reader, .{ .separator = ",", .has_title = true });
 
     var out: std.Io.Writer.Allocating = .init(gpa);
     defer out.deinit();
-    _ = try table.print(&out.writer);
+    try table.write(&out.writer);
     const expect =
         \\+-------+-----+----------------+
         \\| name  |  id |  favorite food |
@@ -722,6 +784,37 @@ test "test read from with title" {
     try testing.expectEqualStrings(expect, out.written());
 }
 
+test "test read delimited with title" {
+    const gpa = testing.allocator;
+    const data =
+        \\name, id, favorite food
+        \\beau, 2, cereal
+        \\abbey, 3, pizza
+        \\
+    ;
+
+    var table = Table.init(gpa);
+    defer table.deinit();
+
+    try table.readDelimited(data, .{ .separator = ",", .has_title = true });
+
+    const output = try table.toOwnedSlice(gpa);
+    defer gpa.free(output);
+
+    const expect =
+        \\+-------+-----+----------------+
+        \\| name  |  id |  favorite food |
+        \\+=======+=====+================+
+        \\| beau  |  2  |  cereal        |
+        \\+-------+-----+----------------+
+        \\| abbey |  3  |  pizza         |
+        \\+-------+-----+----------------+
+        \\
+    ;
+
+    try testing.expectEqualStrings(expect, output);
+}
+
 test "test color" {
     const gpa = testing.allocator;
     var table = Table.init(gpa);
@@ -730,12 +823,11 @@ test "test color" {
     try table.addRow(&[_][]const u8{"1"});
     try table.setCellStyle(0, 0, .{ .bold = true, .fg = .red });
 
-    var out: std.Io.Writer.Allocating = .init(gpa);
-    defer out.deinit();
-    _ = try table.printTerm(&out.writer);
+    const output = try table.toOwnedSliceAnsi(gpa);
+    defer gpa.free(output);
     const expect = [_]u8{ 43, 45, 45, 45, 43, 10, 124, 32, 27, 91, 51, 49, 59, 52, 57, 59, 49, 109, 49, 27, 91, 48, 109, 32, 124, 10, 43, 45, 45, 45, 43, 10 };
 
-    try testing.expect(eql(u8, out.written(), &expect));
+    try testing.expect(eql(u8, output, &expect));
 }
 
 test "test table with unicode characters" {
@@ -754,7 +846,7 @@ test "test table with unicode characters" {
 
     var out: std.Io.Writer.Allocating = .init(gpa);
     defer out.deinit();
-    _ = try table.print(&out.writer);
+    try table.write(&out.writer);
 
     // Verify output contains correct Unicode characters
     try testing.expect(std.mem.indexOf(u8, out.written(), "姓名") != null);
@@ -778,7 +870,7 @@ test "test table with emoji" {
 
     var out: std.Io.Writer.Allocating = .init(gpa);
     defer out.deinit();
-    _ = try table.print(&out.writer);
+    try table.write(&out.writer);
 
     // Verify output contains correct emoji
     try testing.expect(std.mem.indexOf(u8, out.written(), "😊") != null);
@@ -801,7 +893,7 @@ test "test table mixed unicode and ascii" {
 
     var out: std.Io.Writer.Allocating = .init(gpa);
     defer out.deinit();
-    _ = try table.print(&out.writer);
+    try table.write(&out.writer);
 
     // Verify output contains mixed characters
     try testing.expect(std.mem.indexOf(u8, out.written(), "苹果") != null);

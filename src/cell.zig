@@ -110,33 +110,28 @@ pub const Cell = struct {
         return try std.mem.join(allocator, line_sep, self.content.items);
     }
 
-    pub fn print(self: Self, allocator: std.mem.Allocator, writer: *std.Io.Writer, idx: usize, colWidth: usize, skipRightFill: bool) void {
+    pub fn write(self: Self, allocator: std.mem.Allocator, writer: *std.Io.Writer, idx: usize, colWidth: usize, skipRightFill: bool) void {
         _ = allocator;
         var c: []const u8 = "";
         if (self.content.items.len > idx) {
             c = self.content.items[idx];
         }
-        return self.printAlign(writer, self.align_, c, " ", colWidth, skipRightFill) catch return;
+        return self.writeAligned(writer, self.align_, c, " ", colWidth, skipRightFill) catch return;
     }
 
-    pub fn printTerm(self: Self, allocator: std.mem.Allocator, writer: *std.Io.Writer, idx: usize, colWidth: usize, skipRightFill: bool) void {
+    pub fn writeAnsi(self: Self, allocator: std.mem.Allocator, writer: *std.Io.Writer, idx: usize, colWidth: usize, skipRightFill: bool) void {
         var buf = allocator.alloc(u8, 16) catch return;
         defer allocator.free(buf);
         const len = self.style.toAnsi(buf) catch return;
-        // std.debug.print("fuck {any} {d}\r\n", .{prefix, prefix.len});
-        // std.mem.copy(u8, d[0..prefix.len], prefix[0..prefix.len]);
-        // @memcpy(d, prefix);
-        // std.debug.print("Buck {any} {d}\r\n", .{d, d.len});
         writer.writeAll(buf[0..len]) catch return;
-        // _ = out.write("hello") catch return;
-        self.print(allocator, writer, idx, colWidth, skipRightFill);
+        self.write(allocator, writer, idx, colWidth, skipRightFill);
         writer.writeAll("\x1b[0m") catch return;
     }
 
-    /// Align/fill a string and print it to `out`
+    /// Align/fill a string and write it to `writer`.
     /// If `skip_right_fill` is set to `true`, then no space will be added after the string
     /// to complete alignment
-    pub fn printAlign(
+    pub fn writeAligned(
         self: Self,
         writer: *std.Io.Writer,
         align_: Alignment,
@@ -189,7 +184,7 @@ test "test get_content" {
     try testing.expect(eql(u8, content, "test\nnewline"));
 }
 
-test "test print ascii" {
+test "test write ascii" {
     const gpa = testing.allocator;
     var cell = try Cell.init(gpa, "hello");
     defer cell.deinit();
@@ -199,7 +194,7 @@ test "test print ascii" {
     var out: std.Io.Writer.Allocating = .init(gpa);
     defer out.deinit();
 
-    _ = cell.print(gpa, &out.writer, 0, 10, false);
+    _ = cell.write(gpa, &out.writer, 0, 10, false);
     try testing.expect(eql(u8, out.written(), "hello     "));
 }
 
@@ -212,7 +207,7 @@ test "test align left" {
 
     var out: std.Io.Writer.Allocating = .init(gpa);
     defer out.deinit();
-    _ = cell.print(gpa, &out.writer, 0, 10, false);
+    _ = cell.write(gpa, &out.writer, 0, 10, false);
 
     try testing.expect(eql(u8, out.written(), "test      "));
 }
@@ -226,7 +221,7 @@ test "test align center" {
 
     var out: std.Io.Writer.Allocating = .init(gpa);
     defer out.deinit();
-    _ = cell.print(gpa, &out.writer, 0, 10, false);
+    _ = cell.write(gpa, &out.writer, 0, 10, false);
 
     try testing.expect(eql(u8, out.written(), "   test   "));
 }
@@ -240,7 +235,7 @@ test "test align right" {
 
     var out: std.Io.Writer.Allocating = .init(gpa);
     defer out.deinit();
-    _ = cell.print(gpa, &out.writer, 0, 10, false);
+    _ = cell.write(gpa, &out.writer, 0, 10, false);
 
     try testing.expect(eql(u8, out.written(), "      test"));
 }
@@ -277,7 +272,7 @@ test "test cell unicode alignment" {
 
     var out: std.Io.Writer.Allocating = .init(allocator);
     defer out.deinit();
-    _ = cell.print(allocator, &out.writer, 0, 10, false);
+    _ = cell.write(allocator, &out.writer, 0, 10, false);
 
     // Chinese characters "你好" has display width 4, center aligned in width 10 space
     // Left padding 3 spaces, right padding 3 spaces

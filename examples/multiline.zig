@@ -14,19 +14,18 @@ pub fn main(init: std.process.Init) !void {
         &[_][]const u8{ "1", "2" },
     });
 
-    var out: std.Io.Writer.Allocating = .init(allocator);
-    defer out.deinit();
-    _ = try table1.print(&out.writer);
+    const table1_output = try table1.toOwnedSlice(allocator);
+    defer allocator.free(table1_output);
 
     var table2 = Table.init(allocator);
     defer table2.deinit();
 
     try table2.addRows(&[_][]const []const u8{
         &[_][]const u8{ "A", "B", "C" },
-        &[_][]const u8{ "This is\na multiline\ncell", "2", out.written() },
+        &[_][]const u8{ "This is\na multiline\ncell", "2", table1_output },
     });
 
-    try table2.printstd(io);
+    try table2.printStdout(io);
 
     // +-------------+---+------------------------+
     // | A           | B | C                      |
