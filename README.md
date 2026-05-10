@@ -207,11 +207,11 @@ One scenario is to read data from a CSV file.
 ### Get the table as string(bytes)
 
 ```zig
-    var aw: std.Io.Writer.Allocating = .init(std.heap.page_allocator);
-    defer aw.deinit();
-    _ = try table.print(&aw.writer);
+    var out: std.Io.Writer.Allocating = .init(std.heap.page_allocator);
+    defer out.deinit();
+    _ = try table.print(&out.writer);
 
-    // aw.written() is the bytes of table
+    // out.written() is the bytes of table
 ```
 
 ### Change print format

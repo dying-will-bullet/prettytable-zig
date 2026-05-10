@@ -323,19 +323,19 @@ test "test remove cell" {
 }
 
 test "test print" {
-    const gpa = testing.allocator;
+    const allocator = testing.allocator;
     const t = @import("./format.zig");
     const data = [_][]const u8{ "foo", "bar", "foobar" };
-    var r = try row(gpa, &data);
+    var r = try row(allocator, &data);
     defer r.deinit();
 
-    var aw: std.Io.Writer.Allocating = .init(gpa);
-    defer aw.deinit();
-    _ = r.print(&aw.writer, t.FORMAT_DEFAULT, &[_]usize{ 10, 10, 10 });
+    var out: std.Io.Writer.Allocating = .init(allocator);
+    defer out.deinit();
+    _ = r.print(&out.writer, t.FORMAT_DEFAULT, &[_]usize{ 10, 10, 10 });
 
     try testing.expectEqualStrings(
         "| foo        | bar        | foobar     |" ++ line_sep,
-        aw.written(),
+        out.written(),
     );
 }
 

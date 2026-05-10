@@ -196,11 +196,11 @@ test "test print ascii" {
 
     try testing.expect(cell.getWidth() == 5);
 
-    var aw: std.Io.Writer.Allocating = .init(gpa);
-    defer aw.deinit();
+    var out: std.Io.Writer.Allocating = .init(gpa);
+    defer out.deinit();
 
-    _ = cell.print(gpa, &aw.writer, 0, 10, false);
-    try testing.expect(eql(u8, aw.written(), "hello     "));
+    _ = cell.print(gpa, &out.writer, 0, 10, false);
+    try testing.expect(eql(u8, out.written(), "hello     "));
 }
 
 test "test align left" {
@@ -210,11 +210,11 @@ test "test align left" {
 
     try testing.expect(cell.getWidth() == 4);
 
-    var aw: std.Io.Writer.Allocating = .init(gpa);
-    defer aw.deinit();
-    _ = cell.print(gpa, &aw.writer, 0, 10, false);
+    var out: std.Io.Writer.Allocating = .init(gpa);
+    defer out.deinit();
+    _ = cell.print(gpa, &out.writer, 0, 10, false);
 
-    try testing.expect(eql(u8, aw.written(), "test      "));
+    try testing.expect(eql(u8, out.written(), "test      "));
 }
 
 test "test align center" {
@@ -224,11 +224,11 @@ test "test align center" {
 
     try testing.expect(cell.getWidth() == 4);
 
-    var aw: std.Io.Writer.Allocating = .init(gpa);
-    defer aw.deinit();
-    _ = cell.print(gpa, &aw.writer, 0, 10, false);
+    var out: std.Io.Writer.Allocating = .init(gpa);
+    defer out.deinit();
+    _ = cell.print(gpa, &out.writer, 0, 10, false);
 
-    try testing.expect(eql(u8, aw.written(), "   test   "));
+    try testing.expect(eql(u8, out.written(), "   test   "));
 }
 
 test "test align right" {
@@ -238,11 +238,11 @@ test "test align right" {
 
     try testing.expect(cell.getWidth() == 4);
 
-    var aw: std.Io.Writer.Allocating = .init(gpa);
-    defer aw.deinit();
-    _ = cell.print(gpa, &aw.writer, 0, 10, false);
+    var out: std.Io.Writer.Allocating = .init(gpa);
+    defer out.deinit();
+    _ = cell.print(gpa, &out.writer, 0, 10, false);
 
-    try testing.expect(eql(u8, aw.written(), "      test"));
+    try testing.expect(eql(u8, out.written(), "      test"));
 }
 
 test "test cell with unicode characters" {
@@ -268,18 +268,18 @@ test "test cell with unicode characters" {
 }
 
 test "test cell unicode alignment" {
-    const gpa = testing.allocator;
+    const allocator = testing.allocator;
 
-    var cell = try Cell.initWithAlign(gpa, "你好", Alignment.center);
+    var cell = try Cell.initWithAlign(allocator, "你好", Alignment.center);
     defer cell.deinit();
 
     try testing.expectEqual(@as(usize, 4), cell.getWidth());
 
-    var aw: std.Io.Writer.Allocating = .init(gpa);
-    defer aw.deinit();
-    _ = cell.print(gpa, &aw.writer, 0, 10, false);
+    var out: std.Io.Writer.Allocating = .init(allocator);
+    defer out.deinit();
+    _ = cell.print(allocator, &out.writer, 0, 10, false);
 
     // Chinese characters "你好" has display width 4, center aligned in width 10 space
     // Left padding 3 spaces, right padding 3 spaces
-    try testing.expectEqualStrings("   你好   ", aw.written());
+    try testing.expectEqualStrings("   你好   ", out.written());
 }
