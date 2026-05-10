@@ -3,9 +3,10 @@ const pt = @import("prettytable");
 const Table = pt.Table;
 
 pub fn main(init: std.process.Init) !void {
+    const allocator = init.gpa;
     const io = init.io;
 
-    var table = Table.init(std.heap.page_allocator);
+    var table = Table.init(allocator);
     defer table.deinit();
 
     try table.setTitle(&[_][]const u8{ "col1", "col2", "col3" });

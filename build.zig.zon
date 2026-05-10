@@ -2,8 +2,8 @@
     .name = .prettytable,
     // This is a [Semantic Version](https://semver.org/).
     // In a future version of Zig it will be used for package deduplication.
-    .version = "0.3.0",
-    .fingerprint = 0x5df63d51e7ba17f8,
+    .version = "0.4.0",
+    .fingerprint = 0x5df63d5104c95f79,
 
     // This field is optional.
     // This is currently advisory only; Zig does not yet do anything

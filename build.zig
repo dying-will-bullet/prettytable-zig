@@ -126,13 +126,14 @@ pub fn build(b: *std.Build) void {
     test_step.dependOn(&run_table_tests.step);
     test_step.dependOn(&run_style_tests.step);
 
-    buildExample(b, optimize, target, module, zg, &.{ "basic", "format", "multiline", "align", "read", "style", "unicode" });
+    const examples_step = b.step("examples", "Run all examples");
+    buildExample(b, optimize, target, module, zg, examples_step, &.{ "basic", "format", "multiline", "align", "read", "style", "unicode" });
 }
 
 // Although this function looks imperative, note that its job is to
 // declaratively construct a build graph that will be executed by an external
 // runner.
-pub fn buildExample(b: *std.Build, optimize: Mode, target: ResolvedTarget, module: *Module, zg: *std.Build.Dependency, comptime source: []const []const u8) void {
+pub fn buildExample(b: *std.Build, optimize: Mode, target: ResolvedTarget, module: *Module, zg: *std.Build.Dependency, examples_step: *std.Build.Step, comptime source: []const []const u8) void {
     inline for (source) |s| {
         const exe = b.addExecutable(.{
             .name = s,
@@ -151,7 +152,7 @@ pub fn buildExample(b: *std.Build, optimize: Mode, target: ResolvedTarget, modul
         // step when running `zig build`).
         b.installArtifact(exe);
 
-        // const ex = b.addRunArtifact(exe);
-        // example_step.dependOn(&ex.step);
+        const run = b.addRunArtifact(exe);
+        examples_step.dependOn(&run.step);
     }
 }

@@ -17,10 +17,13 @@ pub const FORMAT_NO_BORDER = @import("./format.zig").FORMAT_NO_BORDER;
 pub const FORMAT_NO_BORDER_LINE_SEPARATOR = @import("./format.zig").FORMAT_NO_BORDER_LINE_SEPARATOR;
 pub const FORMAT_BOX_CHARS = @import("./format.zig").FORMAT_BOX_CHARS;
 
-// pub fn main() !void {
+// pub fn main(init: std.process.Init) !void {
 //     const std = @import("std");
+//     const allocator = init.gpa;
+//     const io = init.io;
+//
 //     // Create ad table
-//     var table = Table.init(std.heap.page_allocator);
+//     var table = Table.init(allocator);
 //     defer table.deinit();
 
 //     // add single row
@@ -28,7 +31,7 @@ pub const FORMAT_BOX_CHARS = @import("./format.zig").FORMAT_BOX_CHARS;
 //     try table.addRow(&[_][]const u8{ "4", "5", "6" });
 //     try table.setCellStyle(0, 1, .{ .bold = true, .fg = .red });
 
-//     try table.print_tty(true);
+//     try table.print_tty(io, true);
 //     // +-----+-----+-----+
 //     // | A   | B   | C   |
 //     // +-----+-----+-----+
