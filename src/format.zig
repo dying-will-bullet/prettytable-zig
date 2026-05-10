@@ -68,9 +68,9 @@ pub const LineSeparator = struct {
         return Self.new("-", "+", "+", "+");
     }
 
-    fn print(self: Self, out: anytype, colWidth: []const usize, lpadding: usize, rpadding: usize, colsep: bool, lborder: bool, rborder: bool) !usize {
+    fn print(self: Self, writer: *std.Io.Writer, colWidth: []const usize, lpadding: usize, rpadding: usize, colsep: bool, lborder: bool, rborder: bool) !usize {
         if (lborder) {
-            _ = try out.write(self.ljunc);
+            try writer.writeAll(self.ljunc);
         }
 
         var i: usize = 0;
@@ -78,18 +78,18 @@ pub const LineSeparator = struct {
         while (i < colWidth.len) {
             const width = colWidth[i];
             for (0..(width + lpadding + rpadding)) |_| {
-                _ = try out.write(self.line);
+                try writer.writeAll(self.line);
             }
             if (colsep and i + 1 < colWidth.len) {
-                _ = try out.write(self.junc);
+                try writer.writeAll(self.junc);
             }
 
             i += 1;
         }
         if (rborder) {
-            _ = try out.write(self.rjunc);
+            try writer.writeAll(self.rjunc);
         }
-        _ = try out.write(line_sep);
+        try writer.writeAll(line_sep);
         return 1;
     }
 };
@@ -240,24 +240,24 @@ pub const TableFormat = struct {
         }
     }
 
-    pub fn printLineSeparator(self: Self, out: anytype, colWidth: []const usize, pos: LinePosition) !usize {
+    pub fn printLineSeparator(self: Self, writer: *std.Io.Writer, colWidth: []const usize, pos: LinePosition) !usize {
         const sep = self.getSepForLine(pos);
         if (sep == null) {
             return 0;
         }
         for (0..self.getIndent()) |_| {
-            try out.writeAll(" ");
+            try writer.writeAll(" ");
         }
-        return sep.?.print(out, colWidth, self.getLPadding(), self.getRPadding(), self.csep != null, self.lborder != null, self.rborder != null);
+        return sep.?.print(writer, colWidth, self.getLPadding(), self.getRPadding(), self.csep != null, self.lborder != null, self.rborder != null);
     }
 
-    pub fn printColumnSeparator(self: Self, out: anytype, pos: ColumnPosition) !void {
+    pub fn printColumnSeparator(self: Self, writer: *std.Io.Writer, pos: ColumnPosition) !void {
         const s = self.getColumnSeparator(pos);
         if (s == null) {
             return;
         }
 
-        _ = try out.writeAll(s.?);
+        _ = try writer.writeAll(s.?);
     }
 };
 

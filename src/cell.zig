@@ -110,16 +110,16 @@ pub const Cell = struct {
         return try std.mem.join(allocator, line_sep, self.content.items);
     }
 
-    pub fn print(self: Self, allocator: std.mem.Allocator, out: anytype, idx: usize, colWidth: usize, skipRightFill: bool) void {
+    pub fn print(self: Self, allocator: std.mem.Allocator, writer: *std.Io.Writer, idx: usize, colWidth: usize, skipRightFill: bool) void {
         _ = allocator;
         var c: []const u8 = "";
         if (self.content.items.len > idx) {
             c = self.content.items[idx];
         }
-        return self.printAlign(out, self.align_, c, " ", colWidth, skipRightFill) catch return;
+        return self.printAlign(writer, self.align_, c, " ", colWidth, skipRightFill) catch return;
     }
 
-    pub fn printTerm(self: Self, allocator: std.mem.Allocator, out: anytype, idx: usize, colWidth: usize, skipRightFill: bool) void {
+    pub fn printTerm(self: Self, allocator: std.mem.Allocator, writer: *std.Io.Writer, idx: usize, colWidth: usize, skipRightFill: bool) void {
         var buf = allocator.alloc(u8, 16) catch return;
         defer allocator.free(buf);
         const len = self.style.toAnsi(buf) catch return;
@@ -127,10 +127,10 @@ pub const Cell = struct {
         // std.mem.copy(u8, d[0..prefix.len], prefix[0..prefix.len]);
         // @memcpy(d, prefix);
         // std.debug.print("Buck {any} {d}\r\n", .{d, d.len});
-        _ = out.write(buf[0..len]) catch return;
+        writer.writeAll(buf[0..len]) catch return;
         // _ = out.write("hello") catch return;
-        self.print(allocator, out, idx, colWidth, skipRightFill);
-        _ = out.write("\x1b[0m") catch return;
+        self.print(allocator, writer, idx, colWidth, skipRightFill);
+        writer.writeAll("\x1b[0m") catch return;
     }
 
     /// Align/fill a string and print it to `out`
@@ -138,7 +138,7 @@ pub const Cell = struct {
     /// to complete alignment
     pub fn printAlign(
         self: Self,
-        out: anytype,
+        writer: *std.Io.Writer,
         align_: Alignment,
         text: []const u8,
         fill: []const u8,
@@ -165,14 +165,14 @@ pub const Cell = struct {
         }
         if (n > 0) {
             for (0..n) |_| {
-                _ = try out.write(fill);
+                try writer.writeAll(fill);
             }
             nfill -= n;
         }
-        _ = try out.writeAll(text);
+        _ = try writer.writeAll(text);
         if (nfill > 0 and !skipRightFill) {
             for (0..nfill) |_| {
-                _ = try out.write(fill);
+                try writer.writeAll(fill);
             }
         }
         return;
@@ -198,6 +198,7 @@ test "test print ascii" {
 
     var out: std.Io.Writer.Allocating = .init(gpa);
     defer out.deinit();
+
     _ = cell.print(gpa, &out.writer, 0, 10, false);
     try testing.expect(eql(u8, out.written(), "hello     "));
 }

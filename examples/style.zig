@@ -2,7 +2,7 @@ const std = @import("std");
 const Table = @import("prettytable").Table;
 const FORMAT_BOX_CHARS = @import("prettytable").FORMAT_BOX_CHARS;
 
-pub fn main(init: std.process.Init ) !void {
+pub fn main(init: std.process.Init) !void {
     const io = init.io;
 
     var table = Table.init(std.heap.page_allocator);

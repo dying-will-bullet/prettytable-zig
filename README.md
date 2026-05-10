@@ -45,7 +45,9 @@ Let's start with an example. All example code can be found in the `examples` dir
 const std = @import("std");
 const pt = @import("prettytable");
 
-pub fn main() !void {
+pub fn main(init: std.process.Init) !void {
+    const io = init.io;
+
     var table = pt.Table.init(std.heap.page_allocator);
     defer table.deinit();
 
@@ -60,7 +62,7 @@ pub fn main() !void {
         &.{ "Abha", "SA", "42.5", "18.22", "14.03", "100" },
     });
 
-    try table.printstd();
+    try table.printstd(io);
 }
 ```
 
@@ -147,7 +149,9 @@ Example with Unicode characters:
 const std = @import("std");
 const pt = @import("prettytable");
 
-pub fn main() !void {
+pub fn main(init: std.process.Init) !void {
+    const io = init.io;
+
     var table = pt.Table.init(std.heap.page_allocator);
     defer table.deinit();
 
@@ -157,7 +161,7 @@ pub fn main() !void {
     try table.addRow(&.{ "田中", "こんにちは", "🙂" });
     try table.addRow(&.{ "김철수", "안녕하세요", "😃" });
 
-    try table.printstd();
+    try table.printstd(io);
 }
 ```
 
@@ -191,27 +195,23 @@ One scenario is to read data from a CSV file.
         \\
     ;
 
-    var s = std.io.fixedBufferStream(data);
-    var reader = s.reader();
+    var reader: std.Io.Reader = .fixed(data);
     var table = Table.init(std.heap.page_allocator);
     defer table.deinit();
 
-    var read_buf: [1024]u8 = undefined;
-    try table.readFrom(reader, &read_buf, ",", true);
+    try table.readFrom(&reader, ",", true);
 
-    try table.printstd();
+    try table.printstd(io);
 ```
 
 ### Get the table as string(bytes)
 
 ```zig
-    var buf: std.ArrayList(u8) = .empty;
-    defer buf.deinit(std.heap.page_allocator);
+    var out: std.Io.Writer.Allocating = .init(std.heap.page_allocator);
+    defer out.deinit();
+    _ = try table.print(&out.writer);
 
-    var out = buf.writer(std.heap.page_allocator);
-    _ = try table.print(out);
-
-    // buf.items is the bytes of table
+    // out.written() is the bytes of table
 ```
 
 ### Change print format
