@@ -40,7 +40,7 @@ pub const ColumnPosition = enum {
     right,
 };
 
-/// Contains the character used for printing a line separator
+/// Contains the character used for writing a line separator.
 pub const LineSeparator = struct {
     /// Line separator
     line: Char,
@@ -68,7 +68,7 @@ pub const LineSeparator = struct {
         return Self.new("-", "+", "+", "+");
     }
 
-    fn print(self: Self, writer: *std.Io.Writer, colWidth: []const usize, lpadding: usize, rpadding: usize, colsep: bool, lborder: bool, rborder: bool) !usize {
+    fn write(self: Self, writer: *std.Io.Writer, colWidth: []const usize, lpadding: usize, rpadding: usize, colsep: bool, lborder: bool, rborder: bool) !usize {
         if (lborder) {
             try writer.writeAll(self.ljunc);
         }
@@ -240,7 +240,7 @@ pub const TableFormat = struct {
         }
     }
 
-    pub fn printLineSeparator(self: Self, writer: *std.Io.Writer, colWidth: []const usize, pos: LinePosition) !usize {
+    pub fn writeLineSeparator(self: Self, writer: *std.Io.Writer, colWidth: []const usize, pos: LinePosition) !usize {
         const sep = self.getSepForLine(pos);
         if (sep == null) {
             return 0;
@@ -248,10 +248,10 @@ pub const TableFormat = struct {
         for (0..self.getIndent()) |_| {
             try writer.writeAll(" ");
         }
-        return sep.?.print(writer, colWidth, self.getLPadding(), self.getRPadding(), self.csep != null, self.lborder != null, self.rborder != null);
+        return sep.?.write(writer, colWidth, self.getLPadding(), self.getRPadding(), self.csep != null, self.lborder != null, self.rborder != null);
     }
 
-    pub fn printColumnSeparator(self: Self, writer: *std.Io.Writer, pos: ColumnPosition) !void {
+    pub fn writeColumnSeparator(self: Self, writer: *std.Io.Writer, pos: ColumnPosition) !void {
         const s = self.getColumnSeparator(pos);
         if (s == null) {
             return;

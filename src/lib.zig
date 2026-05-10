@@ -31,7 +31,7 @@ pub const FORMAT_BOX_CHARS = @import("./format.zig").FORMAT_BOX_CHARS;
 //     try table.addRow(&[_][]const u8{ "4", "5", "6" });
 //     try table.setCellStyle(0, 1, .{ .bold = true, .fg = .red });
 
-//     try table.print_tty(io, true);
+//     try table.printStdoutAnsi(io);
 //     // +-----+-----+-----+
 //     // | A   | B   | C   |
 //     // +-----+-----+-----+

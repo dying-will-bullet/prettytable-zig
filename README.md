@@ -23,7 +23,7 @@
   - [Modify cell data](#modify-cell-data)
   - [Alignment](#alignment)
   - [Unicode Support](#unicode-support)
-  - [Read from file/stream/...](#read-from-filestream)
+  - [Read delimited text](#read-delimited-text)
   - [Get the table as string(bytes)](#get-the-table-as-stringbytes)
   - [Change print format](#change-print-format)
   - [Change cell style](#change-cell-style)
@@ -57,13 +57,14 @@ pub fn main(init: std.process.Init) !void {
     });
 
     try table.addRows(&.{
+        &.{ "Prince Rupert", "CA", "-130.32", "54.32", "7.0", "87" },
         &.{ "Caconda", "AO", "15.06", "-13.73", "26.15", "35" },
         &.{ "Diamantino", "BR", "-56.44", "-14.4", "29.4", "74" },
         &.{ "Hirara", "JP", "125.28", "24.8", "21.77", "100" },
         &.{ "Abha", "SA", "42.5", "18.22", "14.03", "100" },
     });
 
-    try table.printstd(io);
+    try table.printStdout(io);
 }
 ```
 
@@ -163,7 +164,7 @@ pub fn main(init: std.process.Init) !void {
     try table.addRow(&.{ "田中", "こんにちは", "🙂" });
     try table.addRow(&.{ "김철수", "안녕하세요", "😃" });
 
-    try table.printstd(io);
+    try table.printStdout(io);
 }
 ```
 
@@ -184,10 +185,10 @@ Output:
 
 The Unicode support is powered by the [zg library](https://codeberg.org/atman/zg) and is available automatically.
 
-### Read from file/stream/...
+### Read delimited text
 
-You can use the `readFrom` function to read data from `Reader` and construct a table.
-One scenario is to read data from a CSV file.
+You can use the `readDelimited` function to read delimited text and construct a table.
+One scenario is to read CSV-like data from a string.
 
 ```zig
     const data =
@@ -197,23 +198,21 @@ One scenario is to read data from a CSV file.
         \\
     ;
 
-    var reader: std.Io.Reader = .fixed(data);
-    var table = Table.init(init.gpa);
+    var table = pt.Table.init(init.gpa);
     defer table.deinit();
 
-    try table.readFrom(&reader, ",", true);
+    try table.readDelimited(data, .{ .separator = ",", .has_title = true });
 
-    try table.printstd(io);
+    try table.printStdout(io);
 ```
 
 ### Get the table as string(bytes)
 
 ```zig
-    var out: std.Io.Writer.Allocating = .init(init.gpa);
-    defer out.deinit();
-    _ = try table.print(&out.writer);
+    const output = try table.toOwnedSlice(init.gpa);
+    defer init.gpa.free(output);
 
-    // out.written() is the bytes of table
+    // output is the bytes of table
 ```
 
 ### Change print format
@@ -268,6 +267,20 @@ Output:
 ![2023-05-23_19-33](https://github.com/Hanaasagi/prettytable-zig/assets/9482395/72de3f62-7970-4e73-affd-8ee6d5347799)
 
 ## API
+
+Core table APIs:
+
+- `Table.init(allocator)` creates a table. Call `table.deinit()` when finished.
+- `table.addRow(...)`, `table.addRows(...)`, `table.insertRow(...)`, and `table.removeRow(...)` modify rows.
+- `table.setTitle(...)`, `table.setCell(...)`, `table.setAlign(...)`, `table.setColumnAlign(...)`, `table.setFormat(...)`, and `table.setCellStyle(...)` configure table data and rendering.
+- `table.write(writer)` writes plain table output to any `*std.Io.Writer`.
+- `table.writeAnsi(writer)` writes table output with ANSI styling to any `*std.Io.Writer`.
+- `table.printStdout(io)` writes plain table output to stdout and flushes it.
+- `table.printStdoutAnsi(io)` writes ANSI-styled table output to stdout and flushes it.
+- `table.toOwnedSlice(allocator)` returns plain table output as an owned byte slice.
+- `table.toOwnedSliceAnsi(allocator)` returns ANSI-styled table output as an owned byte slice.
+- `table.readDelimited(data, options)` reads delimited text from memory.
+- `table.readFrom(reader, options)` reads delimited text from a `*std.Io.Reader`.
 
 [Online Docs](https://dying-will-bullet.github.io/prettytable-zig/)
 

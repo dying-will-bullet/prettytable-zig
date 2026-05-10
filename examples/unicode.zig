@@ -19,7 +19,7 @@ pub fn main(init: std.process.Init) !void {
         try table.addRow(&[_][]const u8{ "王五", "28", "UI设计师", "深圳" });
 
         std.debug.print("=== 中文字符表格 ===\n", .{});
-        try table.printstd(io);
+        try table.printStdout(io);
         std.debug.print("\n", .{});
     }
 
@@ -36,7 +36,7 @@ pub fn main(init: std.process.Init) !void {
         try table.addRow(&[_][]const u8{ "Diana", "🤔", "Thinking", "⭐⭐⭐⭐⭐" });
 
         std.debug.print("=== Emoji 表格 ===\n", .{});
-        try table.printstd(io);
+        try table.printStdout(io);
         std.debug.print("\n", .{});
     }
 
@@ -53,7 +53,7 @@ pub fn main(init: std.process.Init) !void {
         try table.addRow(&[_][]const u8{ "草莓 🍓", "$4.99", "超级好 💯", "日本" });
 
         std.debug.print("=== 混合字符表格 ===\n", .{});
-        try table.printstd(io);
+        try table.printStdout(io);
         std.debug.print("\n", .{});
     }
 
@@ -69,7 +69,7 @@ pub fn main(init: std.process.Init) !void {
         try table.addRow(&[_][]const u8{ "박민수", "28", "기획자", "대구" });
 
         std.debug.print("=== 韩文字符表格 ===\n", .{});
-        try table.printstd(io);
+        try table.printStdout(io);
         std.debug.print("\n", .{});
     }
 
@@ -87,7 +87,7 @@ pub fn main(init: std.process.Init) !void {
         table.setAlign(prettytable.Alignment.right);
 
         std.debug.print("=== 右对齐 Unicode 表格 ===\n", .{});
-        try table.printstd(io);
+        try table.printStdout(io);
         std.debug.print("\n", .{});
     }
 
@@ -106,7 +106,7 @@ pub fn main(init: std.process.Init) !void {
         table.setFormat(prettytable.FORMAT_BOX_CHARS);
 
         std.debug.print("=== Box 字符格式 Unicode 表格 ===\n", .{});
-        try table.printstd(io);
+        try table.printStdout(io);
         std.debug.print("\n", .{});
     }
 }

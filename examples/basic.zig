@@ -18,7 +18,7 @@ pub fn main(init: std.process.Init) !void {
     // add single row
     try table.addRow(&[_][]const u8{ "1", "2", "3" });
 
-    try table.printstd(io);
+    try table.printStdout(io);
     // +-----+-----+-----+
     // | A   | B   | C   |
     // +-----+-----+-----+

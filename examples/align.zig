@@ -17,7 +17,7 @@ pub fn main(init: std.process.Init) !void {
 
     table.setAlign(Alignment.right);
 
-    try table.printstd(io);
+    try table.printStdout(io);
     // +-----+---------+-----+
     // | foo | foooooo | bar |
     // +-----+---------+-----+
