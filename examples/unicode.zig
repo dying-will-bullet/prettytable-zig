@@ -2,9 +2,8 @@ const std = @import("std");
 const prettytable = @import("prettytable");
 
 pub fn main(init: std.process.Init) !void {
+    const allocator = init.gpa;
     const io = init.io;
-
-    const allocator = std.heap.page_allocator;
 
     // Example 1: Chinese character table
     {

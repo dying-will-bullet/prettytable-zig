@@ -13,7 +13,7 @@
 
 <br>
 
-**NOTE: Minimum Supported Zig Version: zig 0.15.2. Any suggestions or feedback are welcome.**
+**NOTE: Minimum Supported Zig Version: zig 0.16.0. Any suggestions or feedback are welcome.**
 
 # Table of Contents
 
@@ -39,16 +39,17 @@
 
 ## Getting Started
 
-Let's start with an example. All example code can be found in the `examples` directory.
+Let's start with an example. All example code can be found in the `examples` directory and can be run with `zig build examples`.
 
 ```zig
 const std = @import("std");
 const pt = @import("prettytable");
 
 pub fn main(init: std.process.Init) !void {
+    const allocator = init.gpa;
     const io = init.io;
 
-    var table = pt.Table.init(std.heap.page_allocator);
+    var table = pt.Table.init(allocator);
     defer table.deinit();
 
     try table.setTitle(&.{
@@ -150,9 +151,10 @@ const std = @import("std");
 const pt = @import("prettytable");
 
 pub fn main(init: std.process.Init) !void {
+    const allocator = init.gpa;
     const io = init.io;
 
-    var table = pt.Table.init(std.heap.page_allocator);
+    var table = pt.Table.init(allocator);
     defer table.deinit();
 
     try table.setTitle(&.{ "Name", "Greeting", "Mood" });
@@ -180,7 +182,7 @@ Output:
 +--------+------------+------+
 ```
 
-The Unicode support is powered by the [zg library](https://codeberg.org/atman/zg) and is automatically enabled when you initialize a table.
+The Unicode support is powered by the [zg library](https://codeberg.org/atman/zg) and is available automatically.
 
 ### Read from file/stream/...
 
@@ -188,7 +190,7 @@ You can use the `readFrom` function to read data from `Reader` and construct a t
 One scenario is to read data from a CSV file.
 
 ```zig
-    var data =
+    const data =
         \\name, id, favorite food
         \\beau, 2, cereal
         \\abbey, 3, pizza
@@ -196,7 +198,7 @@ One scenario is to read data from a CSV file.
     ;
 
     var reader: std.Io.Reader = .fixed(data);
-    var table = Table.init(std.heap.page_allocator);
+    var table = Table.init(init.gpa);
     defer table.deinit();
 
     try table.readFrom(&reader, ",", true);
@@ -207,7 +209,7 @@ One scenario is to read data from a CSV file.
 ### Get the table as string(bytes)
 
 ```zig
-    var out: std.Io.Writer.Allocating = .init(std.heap.page_allocator);
+    var out: std.Io.Writer.Allocating = .init(init.gpa);
     defer out.deinit();
     _ = try table.print(&out.writer);
 

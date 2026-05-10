@@ -3,11 +3,10 @@ const Table = @import("prettytable").Table;
 const FORMAT_BOX_CHARS = @import("prettytable").FORMAT_BOX_CHARS;
 
 pub fn main(init: std.process.Init) !void {
+    const allocator = init.gpa;
     const io = init.io;
 
-    const gpa = std.heap.page_allocator;
-
-    var table1 = Table.init(gpa);
+    var table1 = Table.init(allocator);
     defer table1.deinit();
 
     try table1.addRows(&[_][]const []const u8{
@@ -15,11 +14,11 @@ pub fn main(init: std.process.Init) !void {
         &[_][]const u8{ "1", "2" },
     });
 
-    var out: std.Io.Writer.Allocating = .init(gpa);
+    var out: std.Io.Writer.Allocating = .init(allocator);
     defer out.deinit();
     _ = try table1.print(&out.writer);
 
-    var table2 = Table.init(gpa);
+    var table2 = Table.init(allocator);
     defer table2.deinit();
 
     try table2.addRows(&[_][]const []const u8{
