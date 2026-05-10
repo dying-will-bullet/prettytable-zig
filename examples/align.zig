@@ -3,7 +3,9 @@ const Table = @import("prettytable").Table;
 const Alignment = @import("prettytable").Alignment;
 const FORMAT_BOX_CHARS = @import("prettytable").FORMAT_BOX_CHARS;
 
-pub fn main() !void {
+pub fn main(init: std.process.Init) !void {
+    const io = init.io;
+
     var table = Table.init(std.heap.page_allocator);
     defer table.deinit();
 
@@ -14,7 +16,7 @@ pub fn main() !void {
 
     table.setAlign(Alignment.right);
 
-    try table.printstd();
+    try table.printstd(io);
     // +-----+---------+-----+
     // | foo | foooooo | bar |
     // +-----+---------+-----+

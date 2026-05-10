@@ -323,18 +323,17 @@ test "test remove cell" {
 }
 
 test "test print" {
+    const allocator = testing.allocator;
     const t = @import("./format.zig");
     const data = [_][]const u8{ "foo", "bar", "foobar" };
-    var r = try row(testing.allocator, &data);
+    var r = try row(allocator, &data);
     defer r.deinit();
 
-    var buf: std.ArrayList(u8) = .empty;
-    defer buf.deinit(testing.allocator);
+    var out: std.Io.Writer.Allocating = .init(allocator);
+    defer out.deinit();
+    _ = r.print(&out.writer, t.FORMAT_DEFAULT, &[_]usize{ 10, 10, 10 });
 
-    const out = buf.writer(testing.allocator);
-    _ = r.print(out, t.FORMAT_DEFAULT, &[_]usize{ 10, 10, 10 });
-
-    try testing.expect(eql(u8, buf.items, "| foo        | bar        | foobar     |" ++ line_sep));
+    try testing.expect(eql(u8, out.written(), "| foo        | bar        | foobar     |" ++ line_sep));
 }
 
 // test "test extend cell" {
