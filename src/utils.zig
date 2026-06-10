@@ -8,10 +8,15 @@ pub const line_sep = switch (builtin.os.tag) {
     else => "\n",
 };
 
-pub const getStringWidth = switch (options.unicode_backend) {
-    .zg, .external_zg => @import("./utils/zg_string_width.zig").getStringWidth,
-    .uucode, .external_uucode => @import("./utils/uucode_string_width.zig").getStringWidth,
-};
+/// Get display width of a string.
+pub fn getStringWidth(text: []const u8) usize {
+    const impl = switch (options.unicode_backend) {
+        .zg, .external_zg => @import("./string_width/zg_string_width.zig").getStringWidth,
+        .uucode, .external_uucode => @import("./string_width/uucode_string_width.zig").getStringWidth,
+    };
+
+    return impl(text);
+}
 
 test "Unicode width calculation" {
     // Test ASCII characters
