@@ -9,7 +9,7 @@
 
 [![CI](https://github.com/Hanaasagi/prettytable-zig/actions/workflows/ci.yaml/badge.svg)](https://github.com/Hanaasagi/prettytable-zig/actions/workflows/ci.yaml)
 ![](https://img.shields.io/badge/language-zig-%23ec915c)
-![](https://img.shields.io/badge/version-0.3.0)
+![](https://img.shields.io/badge/version-0.5.0)
 
 <br>
 
@@ -23,6 +23,7 @@
   - [Modify cell data](#modify-cell-data)
   - [Alignment](#alignment)
   - [Unicode Support](#unicode-support)
+  - [Unicode Backend Options](#unicode-backend-options)
   - [Read delimited text](#read-delimited-text)
   - [Get the table as string(bytes)](#get-the-table-as-stringbytes)
   - [Change print format](#change-print-format)
@@ -36,6 +37,7 @@
 - Customizable border
 - Color and style
 - **Unicode width support** - Correct display width calculation for Unicode characters including Chinese, Japanese, Korean, and emoji
+- **Configurable Unicode backend** - Internal `zg`, internal `uucode`, or external backend wiring
 
 ## Getting Started
 
@@ -183,7 +185,71 @@ Output:
 +--------+------------+------+
 ```
 
-The Unicode support is powered by the [zg library](https://codeberg.org/atman/zg) and is available automatically.
+By default, Unicode support is powered by [zg](https://codeberg.org/atman/zg).
+
+### Unicode Backend Options
+
+`prettytable-zig` supports four Unicode backend modes through the `unicode_backend` build option:
+
+- `.zg` (default): use built-in `zg`
+- `.uucode`: use built-in `uucode`
+- `.external_zg`: application provides `DisplayWidth`
+- `.external_uucode`: application provides `uucode`
+
+Internal `zg` (default):
+
+```zig
+const prettytable = b.dependency("prettytable", .{
+    .target = target,
+    .optimize = optimize,
+});
+```
+
+Internal `uucode`:
+
+```zig
+const prettytable = b.dependency("prettytable", .{
+    .target = target,
+    .optimize = optimize,
+    .unicode_backend = .uucode,
+});
+```
+
+External `zg`:
+
+```zig
+const zg = b.dependency("zg", .{
+    .target = target,
+    .optimize = optimize,
+});
+const prettytable = b.dependency("prettytable", .{
+    .target = target,
+    .optimize = optimize,
+    .unicode_backend = .external_zg,
+});
+prettytable.module("prettytable").addImport("DisplayWidth", zg.module("DisplayWidth"));
+```
+
+External `uucode`:
+
+```zig
+const uucode = b.dependency("uucode", .{
+    .target = target,
+    .optimize = optimize,
+    .fields = @as([]const []const u8, &.{
+        "east_asian_width",
+        "grapheme_break",
+        "general_category",
+        "is_emoji_presentation",
+    }),
+});
+const prettytable = b.dependency("prettytable", .{
+    .target = target,
+    .optimize = optimize,
+    .unicode_backend = .external_uucode,
+});
+prettytable.module("prettytable").addImport("uucode", uucode.module("uucode"));
+```
 
 ### Read delimited text
 

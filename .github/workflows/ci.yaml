@@ -24,3 +24,13 @@ jobs:
         run: zig build --verbose
       - name: Run Tests
         run: zig build test
+      - name: Run Tests (uucode backend)
+        run: zig build test -Dunicode_backend=uucode
+      - name: Run Examples
+        run: zig build examples
+      - name: Build External ZG Consumer
+        working-directory: examples/external-zg
+        run: zig build
+      - name: Build External Uucode Consumer
+        working-directory: examples/external-uucode
+        run: zig build
