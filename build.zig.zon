@@ -17,8 +17,8 @@
     // Internet connectivity.
     .dependencies = .{
         .zg = .{
-            .url = "https://codeberg.org/atman/zg/archive/v0.16.0.tar.gz",
-            .hash = "zg-0.15.3-oGqU3BaetgIIRXXxyGsXtvmYgi1XLf4HHvHswqsgLo-Y",
+            .url = "https://codeberg.org/atman/zg/archive/v0.18.0.tar.gz",
+            .hash = "zg-0.18.0-oGqU3MjboAJAkIdf1n_G20BmpEZs_f30RMCacLPVlTXU",
         },
         .uucode = .{
             .url = "git+https://github.com/jacobsandlund/uucode#2826a37a4562284fdacd8fa029d49509cc9bffcd",
