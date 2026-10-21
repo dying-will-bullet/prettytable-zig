@@ -2,14 +2,14 @@
     .name = .external_zg_consumer,
     .fingerprint = 0x94648f0c8422e1da,
     .version = "0.0.0",
-    .minimum_zig_version = "0.16.0",
+    .minimum_zig_version = "0.17.0",
     .dependencies = .{
         .prettytable = .{
             .path = "../..",
         },
         .zg = .{
-            .url = "https://codeberg.org/atman/zg/archive/v0.16.0.tar.gz",
-            .hash = "zg-0.15.3-oGqU3BaetgIIRXXxyGsXtvmYgi1XLf4HHvHswqsgLo-Y",
+            .url = "https://codeberg.org/atman/zg/archive/v0.18.0.tar.gz",
+            .hash = "zg-0.18.0-oGqU3MjboAJAkIdf1n_G20BmpEZs_f30RMCacLPVlTXU",
         },
     },
     .paths = .{
