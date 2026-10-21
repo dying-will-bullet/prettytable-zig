@@ -9,7 +9,7 @@
 
 [![CI](https://github.com/Hanaasagi/prettytable-zig/actions/workflows/ci.yaml/badge.svg)](https://github.com/Hanaasagi/prettytable-zig/actions/workflows/ci.yaml)
 ![](https://img.shields.io/badge/language-zig-%23ec915c)
-![](https://img.shields.io/badge/version-0.5.0)
+![](https://img.shields.io/badge/version-0.6.0)
 
 <br>
 
