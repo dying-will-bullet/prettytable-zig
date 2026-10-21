@@ -1,6 +1,6 @@
 const std = @import("std");
 const Module = std.Build.Module;
-const Mode = std.builtin.OptimizeMode;
+const Mode = std.lang.Optimize;
 const ResolvedTarget = std.Build.ResolvedTarget;
 
 pub const UnicodeBackend = enum {
